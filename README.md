@@ -1,36 +1,219 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Voice Transcription Tool
 
-## Getting Started
+A powerful web application that converts speech to text using OpenAI's Whisper-Large model with grammar cleanup and smart correction features.
 
-First, run the development server:
+## Features
+
+- **Real-time Voice Recording**: Browser-based audio recording with visual feedback
+- **High-Accuracy Transcription**: Powered by OpenAI Whisper-Large for superior speech-to-text accuracy
+- **Grammar Cleanup**: Intelligent text correction and formatting (planned)
+- **Smart Corrections**: Learn from user corrections and auto-apply them (planned)
+- **Google Authentication**: Secure user authentication with Google Sign-In (planned)
+- **User Preferences**: Persistent settings and correction dictionary (planned)
+
+## Tech Stack
+
+- **Frontend**: React + Next.js (TypeScript)
+- **Backend**: Next.js API routes (serverless functions)
+- **AI/ML**: OpenAI Whisper-Large for transcription
+- **Authentication**: Firebase Auth (planned)
+- **Database**: Firestore (planned)
+- **Deployment**: Vercel
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- OpenAI API key
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd voice-tool
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.local.example .env.local
+   ```
+   
+   Add your OpenAI API key to `.env.local`:
+   ```bash
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open the application**
+   Visit [http://localhost:3000](http://localhost:3000) in your browser
+
+## OpenAI Whisper Setup
+
+### Getting Your API Key
+
+1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Create an account or sign in
+3. Navigate to "API Keys" section
+4. Click "Create new secret key"
+5. Copy the key and add it to your `.env.local` file
+
+### Whisper Model Configuration
+
+The application uses OpenAI's `whisper-1` model (Whisper-Large) which provides:
+
+- **High accuracy** for English speech recognition
+- **Support for multiple audio formats** (webm, wav, mp3, m4a, ogg)
+- **File size limit** of 25MB per audio file
+- **Automatic noise reduction** and echo cancellation
+
+### Cost Considerations
+
+- **Pricing**: $0.006 per minute of audio
+- **Example**: 10 minutes of audio = $0.06
+- **Optimization**: Audio is automatically optimized for quality vs. file size
+
+## Google API Integration (Planned)
+
+### Firebase Setup
+
+1. **Create a Firebase Project**
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Click "Create a project"
+   - Follow the setup wizard
+
+2. **Enable Authentication**
+   ```bash
+   # Install Firebase SDK
+   npm install firebase
+   ```
+
+3. **Configure Google Sign-In**
+   - In Firebase Console, go to Authentication > Sign-in method
+   - Enable "Google" provider
+   - Add your domain to authorized domains
+
+4. **Add Firebase Config**
+   ```javascript
+   // firebase.config.js
+   export const firebaseConfig = {
+     apiKey: "your-api-key",
+     authDomain: "your-project.firebaseapp.com",
+     projectId: "your-project-id",
+     // ... other config
+   };
+   ```
+
+### Firestore Database Setup
+
+1. **Create Firestore Database**
+   - In Firebase Console, go to Firestore Database
+   - Create database in production mode
+   - Choose your region
+
+2. **Security Rules**
+   ```javascript
+   // firestore.rules
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{userId} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+     }
+   }
+   ```
+
+## Deployment
+
+### Vercel Deployment (Recommended)
+
+1. **Install Vercel CLI**
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Deploy to Vercel**
+   ```bash
+   vercel --prod
+   ```
+
+3. **Set Environment Variables**
+   In Vercel Dashboard:
+   - Go to your project settings
+   - Add environment variables:
+     - `OPENAI_API_KEY`
+     - `FIREBASE_CONFIG` (when Firebase is integrated)
+
+### Environment Variables
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Required
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional (for future features)
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+FIREBASE_APP_ID=your_app_id
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Usage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Record Audio**
+   - Click the microphone button
+   - Speak clearly into your microphone
+   - Click "Stop Recording" when finished
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **View Transcript**
+   - The audio is automatically transcribed
+   - View the cleaned text in the transcript area
+   - Click "Copy" to copy to clipboard
 
-## Learn More
+3. **Future Features**
+   - Grammar corrections will be highlighted
+   - Click on words to see suggestions
+   - Corrections will be saved for future use
 
-To learn more about Next.js, take a look at the following resources:
+## Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── transcribe/
+│   │       └── route.ts          # OpenAI Whisper API endpoint
+│   ├── page.tsx                  # Main application page
+│   └── layout.tsx               # App layout
+├── components/
+│   └── VoiceRecorder.tsx        # Main voice recording component
+├── hooks/
+│   └── useVoiceRecorder.ts      # Audio recording and transcription logic
+└── types/                       # TypeScript type definitions
+```
 
-## Deploy on Vercel
+### Key Components
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **VoiceRecorder**: Main UI component for recording and displaying transcripts
+- **useVoiceRecorder**: Custom hook handling MediaRecorder API and transcription
+- **API Routes**: Serverless functions for OpenAI integration
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+
+
