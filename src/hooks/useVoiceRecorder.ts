@@ -1,18 +1,20 @@
 import { useState, useRef, useCallback } from 'react';
 
-export type RecordingState = 'idle' | 'recording' | 'processing';
+export type RecordingState = 'idle' | 'recording' | 'processing' | 'transcribing';
 
 interface UseVoiceRecorderReturn {
   recordingState: RecordingState;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
   audioBlob: Blob | null;
+  transcript: string | null;
   error: string | null;
 }
 
 export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [transcript, setTranscript] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -22,6 +24,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     try {
       setError(null);
       setAudioBlob(null);
+      setTranscript(null);
       
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -48,12 +51,11 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       };
 
       // Handle recording stop event
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { 
           type: 'audio/webm;codecs=opus' 
         });
         setAudioBlob(audioBlob);
-        setRecordingState('idle');
         
         // Log blob for verification (Step 0 requirement)
         console.log('Audio blob created:', {
@@ -64,6 +66,9 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
 
         // Clean up stream
         stream.getTracks().forEach(track => track.stop());
+
+        // Auto-transcribe the audio
+        await transcribeAudioBlob(audioBlob);
       };
 
       // Start recording
@@ -84,11 +89,52 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     }
   }, [recordingState]);
 
+  const transcribeAudioBlob = useCallback(async (blob: Blob) => {
+    try {
+      setRecordingState('transcribing');
+      setError(null);
+
+      console.log('Sending audio blob:', {
+        size: blob.size,
+        type: blob.type,
+        name: 'recording.webm'
+      });
+
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setTranscript(result.transcript);
+        console.log('Transcription completed:', result.transcript);
+      } else {
+        console.error('API Error Response:', result);
+        throw new Error(result.error || 'Transcription failed');
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to transcribe audio');
+    } finally {
+      setRecordingState('idle');
+    }
+  }, []);
+
   return {
     recordingState,
     startRecording,
     stopRecording,
     audioBlob,
+    transcript,
     error
   };
 };
