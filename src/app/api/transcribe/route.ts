@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // Configure API route for handling large files
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout
@@ -28,6 +23,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
         error: 'OpenAI API key not configured'
       }, { status: 500 });
     }
+
+    // Initialize OpenAI client at runtime
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     // Parse multipart form data
     const formData = await request.formData();
