@@ -16,8 +16,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
   const startTime = Date.now();
 
   try {
+    console.log('=== TRANSCRIPTION REQUEST START ===');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('API Key present:', !!process.env.OPENAI_API_KEY);
+    console.log('API Key length:', process.env.OPENAI_API_KEY?.length || 0);
+
     // Validate OpenAI API key
     if (!process.env.OPENAI_API_KEY) {
+      console.error('ERROR: OpenAI API key not configured');
       return NextResponse.json({
         success: false,
         error: 'OpenAI API key not configured'
@@ -25,13 +31,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
     }
 
     // Initialize OpenAI client at runtime
+    console.log('Initializing OpenAI client...');
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+    console.log('OpenAI client initialized successfully');
 
     // Parse multipart form data
+    console.log('Parsing form data...');
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File;
+    console.log('Form data parsed successfully');
 
     console.log('Received request with formData keys:', Array.from(formData.keys()));
     console.log('Audio file:', audioFile ? {
@@ -120,7 +130,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error('Transcription error:', error);
+    console.error('=== TRANSCRIPTION ERROR ===');
+    console.error('Error type:', typeof error);
+    console.error('Error name:', error instanceof Error ? error.name : 'unknown');
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'no stack');
+    console.error('Full error object:', error);
 
     // Handle specific OpenAI errors
     if (error instanceof Error) {
