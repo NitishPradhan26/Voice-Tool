@@ -2,6 +2,22 @@ import { useState, useRef, useCallback } from 'react';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'transcribing';
 
+// Pure function for audio blob validation (extracted for testing)
+export const validateAudioBlobPure = (blob: Blob): string | null => {
+  const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5 MB in bytes
+  const MIN_FILE_SIZE = 1000; // 1KB minimum (reasonable minimum for audio)
+
+  if (blob.size < MIN_FILE_SIZE) {
+    return 'Received empty audio, please try again';
+  }
+
+  if (blob.size > MAX_FILE_SIZE) {
+    return 'The audio is too long, can\'t process it';
+  }
+
+  return null;
+};
+
 interface UseVoiceRecorderReturn {
   recordingState: RecordingState;
   startRecording: () => Promise<void>;
@@ -67,6 +83,14 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
         // Clean up stream
         stream.getTracks().forEach(track => track.stop());
 
+        // Validate audio blob before transcription
+        const validationError = validateAudioBlob(audioBlob);
+        if (validationError) {
+          setError(validationError);
+          setRecordingState('idle');
+          return;
+        }
+
         // Auto-transcribe the audio
         await transcribeAudioBlob(audioBlob);
       };
@@ -88,6 +112,10 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       mediaRecorderRef.current.stop();
     }
   }, [recordingState]);
+
+  const validateAudioBlob = useCallback((blob: Blob): string | null => {
+    return validateAudioBlobPure(blob);
+  }, []);
 
   const transcribeAudioBlob = useCallback(async (blob: Blob) => {
     try {

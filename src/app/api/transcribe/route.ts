@@ -49,7 +49,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
 
     // Validate file type and size
     const allowedTypes = ['audio/webm', 'audio/wav', 'audio/mp3', 'audio/m4a', 'audio/ogg'];
-    const maxSize = 25 * 1024 * 1024; // 25MB limit (OpenAI's limit)
+    const maxSize = 4.5 * 1024 * 1024; // 25MB limit (OpenAI's limit)
 
     // Handle webm with codecs
     const isWebmWithCodecs = audioFile.type.startsWith('audio/webm');
@@ -79,14 +79,34 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
 
     console.log(`Transcribing audio file: ${audioFile.name} (${audioFile.type}, ${Math.round(audioFile.size / 1024)}KB)`);
 
-    // Call OpenAI Whisper API
-    const transcription = await openai.audio.transcriptions.create({
+    // Set up timeout for OpenAI API call
+    const WHISPER_TIMEOUT = 45000; // 45 seconds timeout
+    const controller = new AbortController();
+    
+    // Create timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        controller.abort();
+        reject(new Error(`Transcription timed out after ${WHISPER_TIMEOUT / 1000} seconds`));
+      }, WHISPER_TIMEOUT);
+    });
+
+    // Call OpenAI Whisper API with timeout
+    const transcriptionPromise = openai.audio.transcriptions.create({
       file: openaiFile,
       model: 'whisper-1', // This is the large model
       language: 'en', // Optional: specify language for better accuracy
       response_format: 'text',
       temperature: 0.2, // Lower temperature for more consistent results
+    }, {
+      signal: controller.signal // Pass abort signal
     });
+
+    // Race between transcription and timeout
+    const transcription = await Promise.race([
+      transcriptionPromise,
+      timeoutPromise
+    ]);
 
     const duration = Date.now() - startTime;
 
@@ -126,6 +146,22 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
           error: 'Rate limit exceeded. Please try again later.',
           duration
         }, { status: 429 });
+      }
+
+      if (error.message.includes('timed out')) {
+        return NextResponse.json({
+          success: false,
+          error: 'Transcription took too long to process. Please try with a shorter audio file.',
+          duration
+        }, { status: 408 });
+      }
+
+      if (error.name === 'AbortError') {
+        return NextResponse.json({
+          success: false,
+          error: 'Transcription was cancelled due to timeout.',
+          duration
+        }, { status: 408 });
       }
 
       return NextResponse.json({

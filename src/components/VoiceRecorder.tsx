@@ -17,6 +17,7 @@ export default function VoiceRecorder() {
     if (transcript) {
       try {
         await navigator.clipboard.writeText(transcript);
+        console.log('Transcript copied to clipboard');
         // Could add a toast notification here
       } catch (err) {
         console.error('Failed to copy transcript:', err);
