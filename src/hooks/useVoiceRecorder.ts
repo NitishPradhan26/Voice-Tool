@@ -22,11 +22,13 @@ interface UseVoiceRecorderReturn {
   recordingState: RecordingState;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
-  confirmTranscription: () => Promise<void>;
+  confirmTranscription: (prompt?: string) => Promise<void>;
   cancelRecording: () => void;
   audioBlob: Blob | null;
   transcript: string | null;
   error: string | null;
+  audioDuration: number;
+  wordCount: number;
 }
 
 export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
@@ -34,15 +36,20 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
+  const [wordCount, setWordCount] = useState<number>(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   const startRecording = useCallback(async () => {
     try {
       setError(null);
       setAudioBlob(null);
       setTranscript(null);
+      setAudioDuration(0);
+      setWordCount(0);
       
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -99,6 +106,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
 
       // Start recording
       mediaRecorder.start();
+      recordingStartTimeRef.current = Date.now();
       setRecordingState('recording');
       
     } catch (err) {
@@ -111,6 +119,13 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && recordingState === 'recording') {
       setRecordingState('processing');
+      
+      // Calculate audio duration
+      if (recordingStartTimeRef.current) {
+        const duration = Math.round((Date.now() - recordingStartTimeRef.current) / 1000);
+        setAudioDuration(duration);
+      }
+      
       mediaRecorderRef.current.stop();
     }
   }, [recordingState]);
@@ -119,7 +134,11 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     return validateAudioBlobPure(blob);
   }, []);
 
-  const transcribeAudioBlob = useCallback(async (blob: Blob) => {
+  const transcribeAndApplyfiler = useCallback(async (blob: Blob) => {
+
+  }, []);
+
+  const transcribeAudioBlob = useCallback(async (blob: Blob, prompt?: string) => {
     try {
       setRecordingState('transcribing');
       setError(null);
@@ -132,6 +151,9 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
 
       const formData = new FormData();
       formData.append('audio', blob, 'recording.webm');
+      if (prompt) {
+        formData.append('prompt', prompt);
+      }
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
@@ -146,6 +168,9 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
 
       if (result.success) {
         setTranscript(result.transcript);
+        // Calculate word count
+        const words = result.transcript.trim().split(/\s+/).filter((word: string) => word.length > 0);
+        setWordCount(words.length);
         console.log('Transcription completed:', result.transcript);
       } else {
         console.error('API Error Response:', result);
@@ -159,17 +184,19 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     }
   }, []);
 
-  const confirmTranscription = useCallback(async () => {
+  const confirmTranscription = useCallback(async (prompt?: string) => {
     if (audioBlob && recordingState === 'awaiting_confirmation') {
-      await transcribeAudioBlob(audioBlob);
+      await transcribeAudioBlob(audioBlob, prompt);
     }
-  }, [audioBlob, recordingState]);
+  }, [audioBlob, recordingState, transcribeAudioBlob]);
 
   const cancelRecording = useCallback(() => {
     if (recordingState === 'awaiting_confirmation') {
       setAudioBlob(null);
       setTranscript(null);
       setError(null);
+      setAudioDuration(0);
+      setWordCount(0);
       setRecordingState('idle');
     }
   }, [recordingState]);
@@ -182,6 +209,8 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     cancelRecording,
     audioBlob,
     transcript,
-    error
+    error,
+    audioDuration,
+    wordCount
   };
 };

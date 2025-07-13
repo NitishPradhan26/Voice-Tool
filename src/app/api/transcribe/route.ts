@@ -36,6 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
     // Parse multipart form data
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File;
+    const prompt = formData.get('prompt') as string;
 
     console.log('Received request with formData keys:', Array.from(formData.keys()));
     console.log('Audio file:', audioFile ? {
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
       size: audioFile.size,
       type: audioFile.type
     } : 'null');
+    console.log('Prompt:', prompt || 'No prompt provided');
 
     if (!audioFile) {
       return NextResponse.json({
@@ -96,13 +98,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
     });
 
     // Call OpenAI Whisper API with timeout
-    const transcriptionPromise = openai.audio.transcriptions.create({
+    const transcriptionParams: any = {
       file: openaiFile,
       model: 'whisper-1', // This is the large model
       language: 'en', // Optional: specify language for better accuracy
       response_format: 'text',
       temperature: 0.2, // Lower temperature for more consistent results
-    }, {
+    };
+    
+    // Add prompt if provided
+    if (prompt) {
+      transcriptionParams.prompt = prompt;
+    }
+    
+    const transcriptionPromise = openai.audio.transcriptions.create(transcriptionParams, {
       signal: controller.signal // Pass abort signal
     });
 
@@ -118,7 +127,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
 
     return NextResponse.json({
       success: true,
-      transcript: transcription,
+      transcript: String(transcription),
       duration
     });
 

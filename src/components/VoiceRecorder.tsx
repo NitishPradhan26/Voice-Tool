@@ -11,10 +11,13 @@ export default function VoiceRecorder() {
     confirmTranscription,
     cancelRecording,
     transcript, 
-    error 
+    error,
+    audioDuration,
+    wordCount 
   } = useVoiceRecorder();
   
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const [prompt, setPrompt] = useState<string>('The following is a voice-to-text transcription. Please clean it up for grammar and clarity. Respond back with just the cleaned-up text.');
 
   const handleToggleRecording = async () => {
     if (recordingState === 'idle') {
@@ -78,6 +81,21 @@ export default function VoiceRecorder() {
         <p className="text-gray-600">Click the microphone to start recording</p>
       </div>
 
+      {/* Prompt Input */}
+      <div className="w-full max-w-2xl">
+        <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
+          Transcription Prompt
+        </label>
+        <textarea
+          id="prompt"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          rows={3}
+          placeholder="Enter a prompt to guide the transcription..."
+        />
+      </div>
+
       {/* Main Recording Button */}
       {recordingState !== 'awaiting_confirmation' && (
         <button
@@ -123,7 +141,7 @@ export default function VoiceRecorder() {
           <div className="flex space-x-4">
             {/* Confirm Button */}
             <button
-              onClick={confirmTranscription}
+              onClick={() => confirmTranscription(prompt)}
               className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300"
               aria-label="Confirm and transcribe recording"
             >
@@ -156,6 +174,13 @@ export default function VoiceRecorder() {
         </div>
       )}
 
+      {/* Audio Duration Display */}
+      {recordingState === 'awaiting_confirmation' && audioDuration > 0 && (
+        <div className="text-sm text-gray-600">
+          Recording duration: {audioDuration} seconds
+        </div>
+      )}
+
       {/* Transcribing State Indicator */}
       {recordingState === 'transcribing' && (
         <div className="flex items-center space-x-2 text-purple-600">
@@ -168,7 +193,7 @@ export default function VoiceRecorder() {
       {transcript && (
         <div className="w-full max-w-2xl mt-6">
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Transcript</h3>
               <div className="relative group">
                 <button
@@ -202,13 +227,33 @@ export default function VoiceRecorder() {
                 
                 {/* Tooltip */}
                 {copyStatus === 'idle' && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                    Copy to clipboard
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-800"></div>
-                  </div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                      Copy to clipboard
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-800"></div>
+                    </div>
                 )}
               </div>
             </div>
+            
+            {/* Metrics Display */}
+            <div className="flex items-center justify-center space-x-8 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span className="text-sm font-medium text-gray-700">Word Count:</span>
+                <span className="text-lg font-bold text-blue-600">{wordCount}</span>
+              </div>
+              <div className="w-px h-6 bg-gray-300"></div>
+              <div className="flex items-center space-x-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-gray-700">Audio Duration:</span>
+                <span className="text-lg font-bold text-green-600">{audioDuration}s</span>
+              </div>
+            </div>
+            
             <div className="bg-white border border-gray-200 rounded p-3 min-h-[100px]">
               <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
                 {transcript}
