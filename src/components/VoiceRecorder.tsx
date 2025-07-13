@@ -1,9 +1,20 @@
 'use client';
 
+import { useState } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 export default function VoiceRecorder() {
-  const { recordingState, startRecording, stopRecording, transcript, error } = useVoiceRecorder();
+  const { 
+    recordingState, 
+    startRecording, 
+    stopRecording, 
+    confirmTranscription,
+    cancelRecording,
+    transcript, 
+    error 
+  } = useVoiceRecorder();
+  
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
 
   const handleToggleRecording = async () => {
     if (recordingState === 'idle') {
@@ -17,8 +28,13 @@ export default function VoiceRecorder() {
     if (transcript) {
       try {
         await navigator.clipboard.writeText(transcript);
+        setCopyStatus('copied');
         console.log('Transcript copied to clipboard');
-        // Could add a toast notification here
+        
+        // Reset copy status after 2 seconds
+        setTimeout(() => {
+          setCopyStatus('idle');
+        }, 2000);
       } catch (err) {
         console.error('Failed to copy transcript:', err);
       }
@@ -31,6 +47,8 @@ export default function VoiceRecorder() {
         return 'Stop Recording';
       case 'processing':
         return 'Processing...';
+      case 'awaiting_confirmation':
+        return 'Recording Ready';
       case 'transcribing':
         return 'Transcribing...';
       default:
@@ -44,6 +62,8 @@ export default function VoiceRecorder() {
         return 'bg-red-500 hover:bg-red-600 animate-pulse';
       case 'processing':
         return 'bg-yellow-500 cursor-not-allowed';
+      case 'awaiting_confirmation':
+        return 'bg-green-500 cursor-not-allowed';
       case 'transcribing':
         return 'bg-purple-500 cursor-not-allowed animate-pulse';
       default:
@@ -58,39 +78,75 @@ export default function VoiceRecorder() {
         <p className="text-gray-600">Click the microphone to start recording</p>
       </div>
 
-      {/* Microphone Button */}
-      <button
-        onClick={handleToggleRecording}
-        disabled={recordingState === 'processing' || recordingState === 'transcribing'}
-        className={`
-          ${getMicButtonStyle()}
-          text-white font-semibold py-4 px-8 rounded-full
-          transition-all duration-200 transform hover:scale-105
-          disabled:transform-none disabled:hover:scale-100
-          focus:outline-none focus:ring-4 focus:ring-blue-300
-          min-w-[200px]
-        `}
-        aria-label={getMicButtonText()}
-      >
-        <div className="flex items-center justify-center space-x-2">
-          {/* Microphone Icon */}
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"
-            />
-          </svg>
-          <span>{getMicButtonText()}</span>
+      {/* Main Recording Button */}
+      {recordingState !== 'awaiting_confirmation' && (
+        <button
+          onClick={handleToggleRecording}
+          disabled={recordingState === 'processing' || recordingState === 'transcribing'}
+          className={`
+            ${getMicButtonStyle()}
+            text-white font-semibold py-4 px-8 rounded-full
+            transition-all duration-200 transform hover:scale-105
+            disabled:transform-none disabled:hover:scale-100
+            focus:outline-none focus:ring-4 focus:ring-blue-300
+            min-w-[200px]
+          `}
+          aria-label={getMicButtonText()}
+        >
+          <div className="flex items-center justify-center space-x-2">
+            {/* Microphone Icon */}
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 616 0v6a3 3 0 01-3 3z"
+              />
+            </svg>
+            <span>{getMicButtonText()}</span>
+          </div>
+        </button>
+      )}
+
+      {/* Confirmation Buttons */}
+      {recordingState === 'awaiting_confirmation' && (
+        <div className="flex flex-col items-center space-y-4">
+          <p className="text-lg font-medium text-gray-700 text-center">
+            Recording complete! Would you like to transcribe this audio?
+          </p>
+          <div className="flex space-x-4">
+            {/* Confirm Button */}
+            <button
+              onClick={confirmTranscription}
+              className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300"
+              aria-label="Confirm and transcribe recording"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Transcribe</span>
+            </button>
+
+            {/* Cancel Button */}
+            <button
+              onClick={cancelRecording}
+              className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300"
+              aria-label="Cancel and discard recording"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Discard</span>
+            </button>
+          </div>
         </div>
-      </button>
+      )}
 
       {/* Recording State Indicator */}
       {recordingState === 'recording' && (
@@ -114,13 +170,44 @@ export default function VoiceRecorder() {
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-semibold text-gray-800">Transcript</h3>
-              <button
-                onClick={handleCopyTranscript}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-                title="Copy to clipboard"
-              >
-                Copy
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={handleCopyTranscript}
+                  className={`
+                    ${copyStatus === 'copied' 
+                      ? 'bg-green-500 hover:bg-green-600' 
+                      : 'bg-gray-500 hover:bg-gray-600'
+                    }
+                    text-white px-3 py-1 rounded text-sm font-medium transition-all duration-200
+                  `}
+                >
+                  <div className="flex items-center space-x-1">
+                    {copyStatus === 'copied' ? (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+                
+                {/* Tooltip */}
+                {copyStatus === 'idle' && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                    Copy to clipboard
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-800"></div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="bg-white border border-gray-200 rounded p-3 min-h-[100px]">
               <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">

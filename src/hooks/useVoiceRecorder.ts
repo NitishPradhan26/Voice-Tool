@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 
-export type RecordingState = 'idle' | 'recording' | 'processing' | 'transcribing';
+export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing';
 
 // Pure function for audio blob validation (extracted for testing)
 export const validateAudioBlobPure = (blob: Blob): string | null => {
@@ -22,6 +22,8 @@ interface UseVoiceRecorderReturn {
   recordingState: RecordingState;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
+  confirmTranscription: () => Promise<void>;
+  cancelRecording: () => void;
   audioBlob: Blob | null;
   transcript: string | null;
   error: string | null;
@@ -91,8 +93,8 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
           return;
         }
 
-        // Auto-transcribe the audio
-        await transcribeAudioBlob(audioBlob);
+        // Set state to await user confirmation
+        setRecordingState('awaiting_confirmation');
       };
 
       // Start recording
@@ -157,10 +159,27 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     }
   }, []);
 
+  const confirmTranscription = useCallback(async () => {
+    if (audioBlob && recordingState === 'awaiting_confirmation') {
+      await transcribeAudioBlob(audioBlob);
+    }
+  }, [audioBlob, recordingState]);
+
+  const cancelRecording = useCallback(() => {
+    if (recordingState === 'awaiting_confirmation') {
+      setAudioBlob(null);
+      setTranscript(null);
+      setError(null);
+      setRecordingState('idle');
+    }
+  }, [recordingState]);
+
   return {
     recordingState,
     startRecording,
     stopRecording,
+    confirmTranscription,
+    cancelRecording,
     audioBlob,
     transcript,
     error

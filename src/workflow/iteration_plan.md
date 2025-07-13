@@ -45,14 +45,30 @@ Built a fully functional voice transcription application that allows users to re
 
 ---
 
-## Future Iterations (Planned)
+## Iteration 2: Google Authentication with Firebase ✅
 
-### Iteration 2: Smart Text Processing
-- Google Sign in with Firebase
-- UI Improvements 
-    - Cancel button to discard the recorded media
-    - Copy to clip board feed back for better User experience
+**Status: COMPLETED**
 
-    
+### Description
+Implemented a complete Google authentication system using Firebase, transforming the app from an open tool to a secure, user-gated application. Users now see a professional sign-in page first, and only authenticated users can access the voice transcription features.
+
+### Key Features Delivered
+
+#### 🔐 Google Sign-In Integration
+- Professional sign-in page with Google OAuth
+- Firebase Authentication integration
+- Secure popup-based authentication flow
+- Error handling for failed sign-in attempts
+- Loading states during authentication process
+
+#### Improved UI/UX
+- Improved UI/UX for the sign-in page
+- Added Copy to Clipboard feedback for better User experience
+- Added UI/UX to choose either the cancel button or Trancript button
+
+
+
+
+
 
 
