@@ -7,9 +7,10 @@ import { getUserPrompt, updateUserPrompt, getUserTransformations } from '@/servi
 export default function Settings() {
   const { user } = useAuth();
   const [prompt, setPrompt] = useState<string>('The following is a voice-to-text transcription. Please clean it up for grammar and clarity. Respond back with just the cleaned-up text.');
-  const [promptSaved, setPromptSaved] = useState<boolean>(false);
   const [promptLoading, setPromptLoading] = useState<boolean>(false);
   const [savedPrompt, setSavedPrompt] = useState<string>('');
+  const [hasChanges, setHasChanges] = useState<boolean>(false);
+  const [justSaved, setJustSaved] = useState<boolean>(false);
   
   const [transformations, setTransformations] = useState<Record<string, string>>({});
   const [transformationsLoading, setTransformationsLoading] = useState<boolean>(false);
@@ -30,6 +31,8 @@ export default function Settings() {
           setPrompt(userPrompt);
           setSavedPrompt(userPrompt);
           setTransformations(userTransformations);
+          setHasChanges(false);
+          setJustSaved(false);
         } catch (error) {
           console.error('Error loading user data:', error);
         } finally {
@@ -42,9 +45,14 @@ export default function Settings() {
     loadUserData();
   }, [user]);
   
-  // Check if current prompt matches saved prompt
+  // Check if current prompt has changes
   useEffect(() => {
-    setPromptSaved(prompt === savedPrompt);
+    if (savedPrompt) { // Only check after initial load
+      setHasChanges(prompt !== savedPrompt);
+      if (prompt !== savedPrompt) {
+        setJustSaved(false); // Clear saved state when user makes changes
+      }
+    }
   }, [prompt, savedPrompt]);
   
   const handleSavePrompt = async () => {
@@ -54,7 +62,8 @@ export default function Settings() {
     try {
       await updateUserPrompt(user.uid, prompt);
       setSavedPrompt(prompt);
-      setPromptSaved(true);
+      setHasChanges(false);
+      setJustSaved(true);
       console.log('Prompt saved successfully');
     } catch (error) {
       console.error('Error saving prompt:', error);
@@ -97,11 +106,11 @@ export default function Settings() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 disabled={promptLoading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed text-gray-900 placeholder-gray-500"
                 rows={4}
                 placeholder="Enter a prompt to guide the transcription..."
               />
-              {!promptSaved && savedPrompt && (
+              {hasChanges && (
                 <p className="text-xs text-amber-600 mt-1">
                   You have unsaved changes to your prompt
                 </p>
@@ -111,17 +120,19 @@ export default function Settings() {
             <div className="flex justify-end">
               <button
                 onClick={handleSavePrompt}
-                disabled={promptSaved || promptLoading}
+                disabled={!hasChanges || promptLoading}
                 className={`
                   px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
-                  ${promptSaved 
+                  ${justSaved 
                     ? 'bg-green-100 text-green-800 cursor-not-allowed' 
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    : hasChanges 
+                      ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }
                   ${promptLoading ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
               >
-                {promptLoading ? 'Saving...' : promptSaved ? '✓ Saved' : 'Save Prompt'}
+                {promptLoading ? 'Saving...' : justSaved ? '✓ Saved' : 'Save Prompt'}
               </button>
             </div>
           </div>
