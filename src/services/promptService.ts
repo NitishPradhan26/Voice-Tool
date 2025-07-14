@@ -87,3 +87,26 @@ export async function updateUserPrompt(uid: string, newPrompt: string): Promise<
     throw error;
   }
 }
+
+/**
+ * Get user's word transformation rules from Firestore
+ * @param uid - User's UID
+ * @returns Promise<Record<string, string>> - Object with incorrect->correct word mappings
+ */
+export async function getUserTransformations(uid: string): Promise<Record<string, string>> {
+  try {
+    const userDocRef = doc(db, 'Customers', uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      console.log('User data:', userData.corrected_words);
+      return userData.corrected_words || {};
+    }
+    
+    return {};
+  } catch (error) {
+    console.error('Error getting user transformations:', error);
+    return {};
+  }
+}

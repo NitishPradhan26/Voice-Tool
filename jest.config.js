@@ -10,7 +10,9 @@ module.exports = {
     '!src/**/__tests__/**',
   ],
   coverageReporters: ['text', 'lcov', 'html'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  forceExit: true,
 };

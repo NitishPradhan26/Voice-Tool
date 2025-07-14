@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing';
 
@@ -32,6 +33,7 @@ interface UseVoiceRecorderReturn {
 }
 
 export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
+  const { user } = useAuth();
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
@@ -153,6 +155,9 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       formData.append('audio', blob, 'recording.webm');
       if (prompt) {
         formData.append('prompt', prompt);
+      }
+      if (user) {
+        formData.append('uid', user.uid);
       }
 
       const response = await fetch('/api/transcribe', {
