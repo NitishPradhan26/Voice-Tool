@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import VoiceRecorder from "@/components/VoiceRecorder";
 import GoogleSignIn from "@/components/GoogleSignIn";
-import UserProfile from "@/components/UserProfile";
+import AppHeader from "@/components/AppHeader";
+import Settings from "@/components/Settings";
 
 export default function Home() {
   const { user, loading } = useAuth();
+  const [currentView, setCurrentView] = useState<'recorder' | 'settings'>('recorder');
 
   // Show loading spinner while checking authentication state
   if (loading) {
@@ -28,24 +31,27 @@ export default function Home() {
   // Show main app if authenticated
   return (
     <div className="min-h-screen bg-gray-50">
-      <UserProfile />
+      <AppHeader onViewChange={setCurrentView} />
       
       <div className="py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <header className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Voice Transcription Tool
-            </h1>
-            <p className="text-xl text-gray-600">
-              Speak naturally, get clean text instantly
-            </p>
-          </header>
+          {currentView === 'recorder' && (
+            <header className="text-center mb-12">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                Voice Transcription Tool
+              </h1>
+              <p className="text-xl text-gray-600">
+                Speak naturally, get clean text instantly
+              </p>
+            </header>
+          )}
 
-          <main className="bg-white rounded-lg shadow-lg p-8">
-            <VoiceRecorder />
+          <main className={currentView === 'settings' ? "" : "bg-white rounded-lg shadow-lg p-8"}>
+            {currentView === 'settings' ? <Settings /> : <VoiceRecorder />}
           </main>
         </div>
       </div>
     </div>
   );
 }
+
