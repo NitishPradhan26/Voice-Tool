@@ -33,20 +33,20 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <AppHeader onViewChange={setCurrentView} />
       
-      <div className="py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-6 sm:py-12">
+        <div className="max-w-4xl mx-auto px-2 sm:px-6 lg:px-8">
           {currentView === 'recorder' && (
-            <header className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            <header className="text-center mb-6 sm:mb-12">
+              <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2 sm:mb-4">
                 Voice Transcription Tool
               </h1>
-              <p className="text-xl text-gray-600">
+              <p className="text-lg sm:text-xl text-gray-600">
                 Speak naturally, get clean text instantly
               </p>
             </header>
           )}
 
-          <main className={currentView === 'settings' ? "" : "bg-white rounded-lg shadow-lg p-8"}>
+          <main className={currentView === 'settings' ? "" : "bg-white rounded-lg shadow-lg p-3 sm:p-8"}>
             {currentView === 'settings' ? <Settings /> : <VoiceRecorder />}
           </main>
         </div>

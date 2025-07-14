@@ -5,6 +5,7 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserPrompt} from '@/services/promptService';
 import TranscriptDisplay from './TranscriptDisplay';
+import MicWaveform from './WaveformAnimation';
 
 export default function VoiceRecorder() {
   const { 
@@ -95,7 +96,7 @@ export default function VoiceRecorder() {
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4 p-8">
+    <div className="flex flex-col items-center space-y-4 p-2 sm:p-8">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Voice Recorder</h2>
         <p className="text-gray-600">Click the microphone to start recording</p>
@@ -171,11 +172,14 @@ export default function VoiceRecorder() {
         </div>
       )}
 
-      {/* Recording State Indicator */}
+      {/* Recording State Indicator with Waveform */}
       {recordingState === 'recording' && (
-        <div className="flex items-center space-x-2 text-red-600">
-          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">Recording in progress...</span>
+        <div className="flex flex-col items-center space-y-4">
+          <MicWaveform isRecording={true} />
+          <div className="flex items-center space-x-2 text-red-600">
+            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium">Recording in progress...</span>
+          </div>
         </div>
       )}
 
