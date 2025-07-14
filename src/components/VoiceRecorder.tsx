@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserPrompt} from '@/services/promptService';
+// Removed direct service import - now using API endpoint
 import TranscriptDisplay from './TranscriptDisplay';
 import MicWaveform from './WaveformAnimation';
 
@@ -37,8 +37,12 @@ export default function VoiceRecorder() {
     const loadUserPrompt = async () => {
       if (user) {
         try {
-          const userPrompt = await getUserPrompt(user.uid);
-          setPrompt(userPrompt);
+          const response = await fetch(`/api/user/prompt?uid=${user.uid}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch user prompt');
+          }
+          const data = await response.json();
+          setPrompt(data.prompt);
         } catch (error) {
           console.error('Error loading user prompt:', error);
         }

@@ -1,21 +1,16 @@
 import { NextRequest } from 'next/server';
-import { parseRequest, processTranscription } from '../transcriptionHelpers';
-import OpenAI from 'openai';
+import { parseRequest, processTranscription } from '../transcriptionService';
+import { getOpenAIClient } from '../../lib/openAI';
 
-// Mock OpenAI
+// Mock OpenAI client
 const mockCreate = jest.fn();
-jest.mock('openai', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    audio: {
-      transcriptions: {
-        create: mockCreate
-      }
-    }
-  }))
+const mockGetOpenAIClient = jest.mocked(getOpenAIClient);
+
+jest.mock('../../lib/openAI', () => ({
+  getOpenAIClient: jest.fn()
 }));
 
-describe('transcriptionHelpers', () => {
+describe('transcriptionService', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -23,6 +18,15 @@ describe('transcriptionHelpers', () => {
     // Reset environment
     process.env = { ...originalEnv };
     process.env.OPENAI_API_KEY = 'test-api-key';
+    
+    // Setup default mock for getOpenAIClient
+    mockGetOpenAIClient.mockReturnValue({
+      audio: {
+        transcriptions: {
+          create: mockCreate
+        }
+      }
+    } as any);
   });
 
   afterEach(() => {
@@ -151,7 +155,9 @@ describe('transcriptionHelpers', () => {
   describe('processTranscription', () => {
     it('successfully transcribes audio file', async () => {
       const expectedTranscript = 'Hello, this is a test transcription';
-      mockCreate.mockResolvedValue(expectedTranscript);
+      mockCreate.mockImplementation(() => 
+        new Promise(resolve => setTimeout(() => resolve(expectedTranscript), 10))
+      );
 
       const audioFile = new File([Buffer.alloc(1024)], 'test.webm', { type: 'audio/webm' });
       const result = await processTranscription(audioFile);
@@ -191,21 +197,6 @@ describe('transcriptionHelpers', () => {
       );
     });
 
-    it('throws error when OpenAI API key is not configured', async () => {
-      delete process.env.OPENAI_API_KEY;
-
-      const audioFile = new File([Buffer.alloc(1024)], 'test.webm', { type: 'audio/webm' });
-      
-      await expect(processTranscription(audioFile)).rejects.toThrow('OpenAI API key not configured');
-    });
-
-    it('throws error when OpenAI API key is empty', async () => {
-      process.env.OPENAI_API_KEY = '';
-
-      const audioFile = new File([Buffer.alloc(1024)], 'test.webm', { type: 'audio/webm' });
-      
-      await expect(processTranscription(audioFile)).rejects.toThrow('OpenAI API key not configured');
-    });
 
     it('handles OpenAI API timeout', async () => {
       mockCreate.mockImplementation(() => 

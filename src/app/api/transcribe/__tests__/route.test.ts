@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../route';
-import { parseRequest, processTranscription } from '../../../../lib/transcriptionHelpers';
+import { parseRequest, processTranscription } from '../../../../services/transcriptionService';
 import { getUserTransformations } from '../../../../services/promptService';
 import { applyWordTransformations } from '../../../../utils/textTransformations';
 
 // Mock dependencies
-jest.mock('../../../../lib/transcriptionHelpers');
+jest.mock('../../../../services/transcriptionService');
 jest.mock('../../../../services/promptService');
 jest.mock('../../../../utils/textTransformations');
 

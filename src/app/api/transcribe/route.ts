@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseRequest, processTranscription } from '@/lib/transcriptionHelpers';
+import { parseRequest, processTranscription } from '@/services/transcriptionService';
 import { getUserTransformations } from '@/services/promptService';
 import { applyWordTransformations } from '@/utils/textTransformations';
 

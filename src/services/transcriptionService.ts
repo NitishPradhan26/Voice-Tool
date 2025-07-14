@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import OpenAI from 'openai';
+import { getOpenAIClient } from '@/lib/openAI';
 
 interface TranscriptionResult {
   transcript: string;
@@ -72,15 +72,8 @@ export async function processTranscription(
 ): Promise<TranscriptionResult> {
   const startTime = Date.now();
 
-  // Validate OpenAI API key
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OpenAI API key not configured');
-  }
-
   // Initialize OpenAI client
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+  const openai = getOpenAIClient();
 
   // Convert File to Buffer for OpenAI API
   const audioBuffer = Buffer.from(await audioFile.arrayBuffer());

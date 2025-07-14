@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserPrompt, updateUserPrompt, getUserTransformations } from '@/services/promptService';
+// Removed direct service imports - now using API endpoints
 
 export default function Settings() {
   const { user } = useAuth();
@@ -23,14 +23,21 @@ export default function Settings() {
         setTransformationsLoading(true);
         
         try {
-          const [userPrompt, userTransformations] = await Promise.all([
-            getUserPrompt(user.uid),
-            getUserTransformations(user.uid)
+          const [promptResponse, transformationsResponse] = await Promise.all([
+            fetch(`/api/user/prompt?uid=${user.uid}`),
+            fetch(`/api/user/transformations?uid=${user.uid}`)
           ]);
+
+          if (!promptResponse.ok || !transformationsResponse.ok) {
+            throw new Error('Failed to fetch user data');
+          }
+
+          const promptData = await promptResponse.json();
+          const transformationsData = await transformationsResponse.json();
           
-          setPrompt(userPrompt);
-          setSavedPrompt(userPrompt);
-          setTransformations(userTransformations);
+          setPrompt(promptData.prompt);
+          setSavedPrompt(promptData.prompt);
+          setTransformations(transformationsData.transformations);
           setHasChanges(false);
           setJustSaved(false);
         } catch (error) {
@@ -60,7 +67,21 @@ export default function Settings() {
     
     setPromptLoading(true);
     try {
-      await updateUserPrompt(user.uid, prompt);
+      const response = await fetch('/api/user/prompt', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          prompt: prompt
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save prompt');
+      }
+
       setSavedPrompt(prompt);
       setHasChanges(false);
       setJustSaved(true);
