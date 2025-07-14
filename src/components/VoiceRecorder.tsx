@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { useAuth } from '@/contexts/AuthContext';
+import { getUserPrompt, updateUserPrompt } from '@/services/promptService';
 
 export default function VoiceRecorder() {
   const { 
@@ -18,12 +20,58 @@ export default function VoiceRecorder() {
   
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [prompt, setPrompt] = useState<string>('The following is a voice-to-text transcription. Please clean it up for grammar and clarity. Respond back with just the cleaned-up text.');
+  const [promptSaved, setPromptSaved] = useState<boolean>(false);
+  const [promptLoading, setPromptLoading] = useState<boolean>(false);
+  const [savedPrompt, setSavedPrompt] = useState<string>('');
+  
+  const { user } = useAuth();
 
   const handleToggleRecording = async () => {
     if (recordingState === 'idle') {
       await startRecording();
     } else if (recordingState === 'recording') {
       stopRecording();
+    }
+  };
+
+  // Load user's saved prompt on component mount or user change
+  useEffect(() => {
+    const loadUserPrompt = async () => {
+      if (user) {
+        setPromptLoading(true);
+        try {
+          const userPrompt = await getUserPrompt(user.uid);
+          setPrompt(userPrompt);
+          setSavedPrompt(userPrompt);
+        } catch (error) {
+          console.error('Error loading user prompt:', error);
+        } finally {
+          setPromptLoading(false);
+        }
+      }
+    };
+    
+    loadUserPrompt();
+  }, [user]);
+  
+  // Check if current prompt matches saved prompt
+  useEffect(() => {
+    setPromptSaved(prompt === savedPrompt);
+  }, [prompt, savedPrompt]);
+  
+  const handleSavePrompt = async () => {
+    if (!user) return;
+    
+    setPromptLoading(true);
+    try {
+      await updateUserPrompt(user.uid, prompt);
+      setSavedPrompt(prompt);
+      setPromptSaved(true);
+      console.log('Prompt saved successfully');
+    } catch (error) {
+      console.error('Error saving prompt:', error);
+    } finally {
+      setPromptLoading(false);
     }
   };
 
@@ -83,17 +131,43 @@ export default function VoiceRecorder() {
 
       {/* Prompt Input */}
       <div className="w-full max-w-2xl">
-        <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-          Transcription Prompt
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
+            Transcription Prompt
+          </label>
+          {user && (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleSavePrompt}
+                disabled={promptSaved || promptLoading}
+                className={`
+                  px-3 py-1 rounded text-sm font-medium transition-all duration-200
+                  ${promptSaved 
+                    ? 'bg-green-100 text-green-800 cursor-not-allowed' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }
+                  ${promptLoading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              >
+                {promptLoading ? 'Saving...' : promptSaved ? '✓ Saved' : 'Save as Default'}
+              </button>
+            </div>
+          )}
+        </div>
         <textarea
           id="prompt"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          disabled={promptLoading}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed"
           rows={3}
           placeholder="Enter a prompt to guide the transcription..."
         />
+        {!promptSaved && savedPrompt && (
+          <p className="text-xs text-gray-500 mt-1">
+            You have unsaved changes to your prompt
+          </p>
+        )}
       </div>
 
       {/* Main Recording Button */}
@@ -124,7 +198,7 @@ export default function VoiceRecorder() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 616 0v6a3 3 0 01-3 3z"
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"
               />
             </svg>
             <span>{getMicButtonText()}</span>

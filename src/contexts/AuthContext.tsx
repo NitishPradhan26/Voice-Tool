@@ -49,11 +49,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(true);
       const result = await signInWithPopup(auth, googleProvider);
       console.log('Sign-in successful:', result.user.displayName);
+      // Let onAuthStateChanged handle both user and loading state
     } catch (error) {
       console.error('Sign-in failed:', error);
+      setLoading(false); // Only reset loading on error
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
