@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
+import { applyWordTransformations } from '@/utils/textTransformations';
 // Removed direct service import - now using API endpoint
 import TranscriptDisplay from './TranscriptDisplay';
 import MicWaveform from './WaveformAnimation';
@@ -22,6 +23,7 @@ export default function VoiceRecorder() {
   
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [prompt, setPrompt] = useState<string>('The following is a voice-to-text transcription. Please clean it up for grammar and clarity. Respond back with just the cleaned-up text.'); 
+  const [correctedWords, setCorrectedWords] = useState<Record<string, string>>({});
   const { user } = useAuth();
 
   const handleToggleRecording = async () => {
@@ -52,10 +54,41 @@ export default function VoiceRecorder() {
   }, [user]);
   
   
+  const handleWordCorrection = async (originalWord: string, correctedWord: string) => {
+    // Update local corrections map for immediate UI feedback
+    setCorrectedWords(prev => ({
+      ...prev,
+      [originalWord]: correctedWord
+    }));
+    
+    // Save only this single correction to server
+    if (user) {
+      try {
+        await fetch('/api/user/transformations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            transformations: {
+              [originalWord]: correctedWord  // Only send the single correction
+            }
+          })
+        });
+        console.log(`Word correction saved: "${originalWord}" → "${correctedWord}"`);
+      } catch (error) {
+        console.error('Error saving word correction:', error);
+      }
+    }
+  };
+
   const handleCopyTranscript = async () => {
     if (transcript) {
       try {
-        await navigator.clipboard.writeText(transcript);
+        // Apply corrections before copying
+        const correctedTranscript = applyWordTransformations(transcript, correctedWords);
+        await navigator.clipboard.writeText(correctedTranscript);
         setCopyStatus('copied');
         console.log('Transcript copied to clipboard');
         
@@ -79,6 +112,8 @@ export default function VoiceRecorder() {
         return 'Recording Ready';
       case 'transcribing':
         return 'Transcribing...';
+      case 'correcting_grammar':
+        return 'Correcting Grammar...';
       default:
         return 'Start Recording';
     }
@@ -94,6 +129,8 @@ export default function VoiceRecorder() {
         return 'bg-green-500 cursor-not-allowed';
       case 'transcribing':
         return 'bg-purple-500 cursor-not-allowed animate-pulse';
+      case 'correcting_grammar':
+        return 'bg-indigo-500 cursor-not-allowed animate-pulse';
       default:
         return 'bg-blue-500 hover:bg-blue-600';
     }
@@ -110,7 +147,7 @@ export default function VoiceRecorder() {
       {recordingState !== 'awaiting_confirmation' && (
         <button
           onClick={handleToggleRecording}
-          disabled={recordingState === 'processing' || recordingState === 'transcribing'}
+          disabled={recordingState === 'processing' || recordingState === 'transcribing' || recordingState === 'correcting_grammar'}
           className={`
             ${getMicButtonStyle()}
             text-white font-semibold py-4 px-8 rounded-full
@@ -202,6 +239,14 @@ export default function VoiceRecorder() {
         </div>
       )}
 
+      {/* Grammar Correction State Indicator */}
+      {recordingState === 'correcting_grammar' && (
+        <div className="flex items-center space-x-2 text-indigo-600">
+          <div className="w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></div>
+          <span className="text-sm font-medium">Correcting grammar and spelling...</span>
+        </div>
+      )}
+
       {/* Transcript Display */}
       {transcript && (
         <div className="w-full max-w-2xl mt-6">
@@ -268,7 +313,11 @@ export default function VoiceRecorder() {
             </div>
             
             <div className="bg-white border border-gray-200 rounded p-3 min-h-[100px]">
-              <TranscriptDisplay transcript={transcript} />
+              <TranscriptDisplay 
+                transcript={transcript} 
+                onWordCorrection={handleWordCorrection}
+                correctedWords={correctedWords}
+              />
             </div>
           </div>
         </div>

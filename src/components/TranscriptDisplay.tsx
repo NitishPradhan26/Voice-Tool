@@ -1,30 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo } from 'react';
 import ClickableWord from './ClickableWord';
+import { applyWordTransformations } from '@/utils/textTransformations';
 
 interface TranscriptDisplayProps {
   transcript: string;
+  onWordCorrection: (originalWord: string, correctedWord: string) => void;
+  correctedWords: Record<string, string>;
 }
 
-export default function TranscriptDisplay({ transcript }: TranscriptDisplayProps) {
-  const [currentTranscript, setCurrentTranscript] = useState(transcript);
-
-  const handleWordCorrection = (incorrectWord: string, correctWord: string) => {
-    // Replace all instances of the word in the current transcript
-    const cleanIncorrectWord = incorrectWord.replace(/[^\w]/g, '');
-    const wordRegex = new RegExp(`\\b${cleanIncorrectWord}\\b`, 'gi');
-    
-    const updatedTranscript = currentTranscript.replace(wordRegex, correctWord);
-    setCurrentTranscript(updatedTranscript);
-  };
+export default function TranscriptDisplay({ 
+  transcript, 
+  onWordCorrection, 
+  correctedWords 
+}: TranscriptDisplayProps) {
+  // Apply corrections to transcript for display
+  const displayTranscript = useMemo(() => {
+    return applyWordTransformations(transcript, correctedWords);
+  }, [transcript, correctedWords]);
 
   // Split transcript into words while preserving whitespace and punctuation
   const renderClickableTranscript = () => {
-    if (!currentTranscript) return null;
+    if (!displayTranscript) return null;
 
     // Split by spaces but keep the spaces
-    const parts = currentTranscript.split(/(\s+)/);
+    const parts = displayTranscript.split(/(\s+)/);
     
     return parts.map((part, index) => {
       // If it's just whitespace, render as-is
@@ -38,7 +39,7 @@ export default function TranscriptDisplay({ transcript }: TranscriptDisplayProps
           <ClickableWord
             key={index}
             word={part}
-            onCorrection={handleWordCorrection}
+            onCorrection={onWordCorrection}
           />
         );
       }

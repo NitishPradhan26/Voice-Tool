@@ -39,8 +39,8 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (correction.trim() && correction.trim() !== word) {
-      onCorrection(word, correction.trim());
+    if (correction.trim() && correction.trim() !== cleanWord) {
+      onCorrection(cleanWord, correction.trim());
       setShowPopup(false);
       setCorrection('');
     }

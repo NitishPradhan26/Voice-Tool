@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing';
+export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing' | 'correcting_grammar';
 
 // Pure function for audio blob validation (extracted for testing)
 export const validateAudioBlobPure = (blob: Blob): string | null => {
@@ -172,11 +172,48 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       const result = await response.json();
 
       if (result.success) {
-        setTranscript(result.transcript);
-        // Calculate word count
-        const words = result.transcript.trim().split(/\s+/).filter((word: string) => word.length > 0);
+        const originalTranscript = result.transcript;
+        setTranscript(originalTranscript);
+        
+        // Calculate word count for original transcript
+        const words = originalTranscript.trim().split(/\s+/).filter((word: string) => word.length > 0);
         setWordCount(words.length);
-        console.log('Transcription completed:', result.transcript);
+        console.log('Transcription completed:', originalTranscript);
+        
+        // Step 2: Grammar correction
+        try {
+          setRecordingState('correcting_grammar');
+          console.log('Starting grammar correction...');
+          
+          const grammarResponse = await fetch('/api/grammar/correct', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: originalTranscript,
+              userPrompt: prompt,
+              uid: user?.uid
+            }),
+          });
+          
+          if (!grammarResponse.ok) {
+            throw new Error(`Grammar correction failed: ${grammarResponse.status}`);
+          }
+          
+          const grammarResult = await grammarResponse.json();
+          
+          if (grammarResult.success) {
+            setTranscript(grammarResult.correctedText);
+            console.log('Grammar correction completed:', grammarResult.correctedText);
+          } else {
+            console.warn('Grammar correction failed, using original transcript:', grammarResult.error);
+            // Keep original transcript if grammar correction fails
+          }
+        } catch (grammarError) {
+          console.warn('Grammar correction error, using original transcript:', grammarError);
+          // Keep original transcript if grammar correction fails
+        }
       } else {
         console.error('API Error Response:', result);
         throw new Error(result.error || 'Transcription failed');

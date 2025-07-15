@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserTransformations } from '@/services/promptService';
+import { getUserTransformations, addUserTransformations } from '@/services/promptService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,6 +21,38 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching user transformations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch user transformations' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { uid, transformations } = body;
+
+    if (!uid || !transformations) {
+      return NextResponse.json(
+        { error: 'User ID and transformations are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate transformations is an object with key:value pairs
+    if (typeof transformations !== 'object' || Array.isArray(transformations)) {
+      return NextResponse.json(
+        { error: 'Transformations must be an object with key:value pairs' },
+        { status: 400 }
+      );
+    }
+
+    await addUserTransformations(uid, transformations);
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error updating user transformations:', error);
+    return NextResponse.json(
+      { error: 'Failed to update user transformations' },
       { status: 500 }
     );
   }

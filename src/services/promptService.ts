@@ -29,17 +29,11 @@ export async function getUserPrompt(uid: string): Promise<string> {
       const userData = userDoc.data();
       console.log('User data:', userData);
       
-      // Check if prompt field exists
-      if (userData.prompt) {
-        return userData.prompt;
-      } else {
-        // Document exists but no prompt field - create default prompt
-        await createDefaultPrompt(uid);
-        return DEFAULT_PROMPT;
-      }
+      // Return prompt if it exists, otherwise return default
+      return userData.prompt || DEFAULT_PROMPT;
     }
     
-    // If no document exists, create default prompt for user
+    // User doesn't exist - initialize with default data
     await createDefaultPrompt(uid);
     return DEFAULT_PROMPT;
   } catch (error) {
@@ -49,7 +43,7 @@ export async function getUserPrompt(uid: string): Promise<string> {
 }
 
 /**
- * Create default prompt for new user
+ * Initialize user data with default values for new user
  * @param uid - User's UID
  * @returns Promise<void>
  */
@@ -57,12 +51,13 @@ export async function createDefaultPrompt(uid: string): Promise<void> {
   try {
     const userDocRef = doc(db, 'Customers', uid);
     await setDoc(userDocRef, {
-      prompt: DEFAULT_PROMPT
+      prompt: DEFAULT_PROMPT,
+      corrected_words: {} // Initialize as empty object, not null
     });
     
-    console.log('Default prompt created for user:', uid);
+    console.log('User initialized with default data:', uid);
   } catch (error) {
-    console.error('Error creating default prompt:', error);
+    console.error('Error initializing user:', error);
     throw error;
   }
 }
@@ -104,9 +99,38 @@ export async function getUserTransformations(uid: string): Promise<Record<string
       return userData.corrected_words || {};
     }
     
+    // User doesn't exist - initialize with default data
+    await createDefaultPrompt(uid);
     return {};
   } catch (error) {
     console.error('Error getting user transformations:', error);
     return {};
+  }
+}
+
+/**
+ * Add user's word transformation rules to Firestore
+ * @param uid - User's UID
+ * @param transformations - Object with key:value pairs (incorrect->correct word mappings)
+ * @returns Promise<void>
+ */
+export async function addUserTransformations(uid: string, transformations: Record<string, string>): Promise<void> {
+  try {
+    const userDocRef = doc(db, 'Customers', uid);
+    
+    // Build update object with dot notation for nested fields
+    const updateData: Record<string, string> = {};
+    
+    // Add each transformation as a nested field update
+    Object.entries(transformations).forEach(([originalWord, correctedWord]) => {
+      updateData[`corrected_words.${originalWord}`] = correctedWord;
+    });
+    
+    // Update the user document - this adds to existing corrected_words
+    await updateDoc(userDocRef, updateData);
+    console.log('Transformations added successfully for user:', uid);
+  } catch (error) {
+    console.error('Error adding user transformations:', error);
+    throw error;
   }
 }

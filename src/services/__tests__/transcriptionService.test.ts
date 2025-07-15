@@ -178,25 +178,6 @@ describe('transcriptionService', () => {
       );
     });
 
-    it('includes prompt when provided', async () => {
-      const expectedTranscript = 'Transcription with prompt';
-      mockCreate.mockResolvedValue(expectedTranscript);
-
-      const audioFile = new File([Buffer.alloc(1024)], 'test.webm', { type: 'audio/webm' });
-      const prompt = 'This is a test prompt';
-      
-      const result = await processTranscription(audioFile, prompt);
-
-      expect(result.transcript).toBe(expectedTranscript);
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          prompt: prompt,
-          file: expect.any(File)
-        }),
-        expect.any(Object)
-      );
-    });
-
 
     it('handles OpenAI API timeout', async () => {
       mockCreate.mockImplementation(() => 

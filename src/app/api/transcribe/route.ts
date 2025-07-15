@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseRequest, processTranscription } from '@/services/transcriptionService';
-import { getUserTransformations } from '@/services/promptService';
-import { applyWordTransformations } from '@/utils/textTransformations';
 
 // Configure API route for handling large files
 export const runtime = 'nodejs';
@@ -22,23 +20,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Transcrip
     const { audioFile, prompt, uid } = await parseRequest(request);
 
     // 2. Core transcription (always happens)
-    const result = await processTranscription(audioFile, prompt);
-
-    // 3. Optional transformation step
-    console.log('uid', uid);
-    if (uid) {
-      try {
-        console.log('Getting user transformations for user:', uid);
-        const userTransformations = await getUserTransformations(uid);
-        if (Object.keys(userTransformations).length > 0) {
-          result.transcript = applyWordTransformations(result.transcript, userTransformations);
-          console.log('Applied user transformations for user:', uid);
-        }
-      } catch (transformError) {
-        console.warn('Transformation failed:', transformError);
-        // Continue with original transcript
-      }
-    }
+    const result = await processTranscription(audioFile);
 
     return NextResponse.json({
       success: true,

@@ -50,7 +50,7 @@ describe('/api/transcribe POST', () => {
         duration: 1500
       });
       expect(mockParseRequest).toHaveBeenCalledWith(request);
-      expect(mockProcessTranscription).toHaveBeenCalledWith(mockAudioFile, 'Test prompt');
+      expect(mockProcessTranscription).toHaveBeenCalledWith(mockAudioFile);
       expect(mockGetUserTransformations).not.toHaveBeenCalled();
       expect(mockApplyWordTransformations).not.toHaveBeenCalled();
     });

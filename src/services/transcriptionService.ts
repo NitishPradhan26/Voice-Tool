@@ -63,12 +63,10 @@ export async function parseRequest(request: NextRequest): Promise<ParsedRequest>
 /**
  * Process audio transcription using OpenAI Whisper
  * @param audioFile - Audio file to transcribe
- * @param prompt - Optional prompt for transcription context
  * @returns Promise<TranscriptionResult> - Transcription result with duration
  */
 export async function processTranscription(
-  audioFile: File, 
-  prompt?: string
+  audioFile: File
 ): Promise<TranscriptionResult> {
   const startTime = Date.now();
 
@@ -98,18 +96,13 @@ export async function processTranscription(
   });
 
   // Call OpenAI Whisper API with timeout
-  const transcriptionParams: any = {
+  const transcriptionParams = {
     file: openaiFile,
-    model: 'whisper-1', // This is the large model
+    model: 'whisper-1' as const, // This is the large model
     language: 'en', // Optional: specify language for better accuracy
-    response_format: 'text',
+    response_format: 'text' as const,
     temperature: 0.2, // Lower temperature for more consistent results
   };
-  
-  // Add prompt if provided
-  if (prompt) {
-    transcriptionParams.prompt = prompt;
-  }
   
   const transcriptionPromise = openai.audio.transcriptions.create(transcriptionParams, {
     signal: controller.signal // Pass abort signal
