@@ -21,6 +21,53 @@ export const validateAudioBlobPure = (blob: Blob): string | null => {
   return null;
 };
 
+// Pure function for transcription result validation
+export const validateTranscriptionResult = (transcript: string): string | null => {
+  if (!transcript) {
+    return 'No speech detected in the audio. Please try speaking louder or closer to the microphone.';
+  }
+
+  const trimmedTranscript = transcript.trim();
+  
+  if (trimmedTranscript.length === 0) {
+    return 'No speech detected in the audio. Please try speaking louder or closer to the microphone.';
+  }
+
+  // Check if transcript is too short (likely just background noise)
+  if (trimmedTranscript.length < 3) {
+    return 'Very short audio detected. Please try speaking for a longer duration.';
+  }
+
+  // Check for common Whisper "no speech" indicators
+  const noSpeechIndicators = [
+    'thank you',
+    'thanks',
+    '...',
+    '..',
+    'uh',
+    'um',
+    'you',
+    'bye',
+    'thank you for watching',
+    'music',
+    '[music]',
+    '(music)',
+    'silence'
+  ];
+
+  const lowerTranscript = trimmedTranscript.toLowerCase().replace(/[^\w\s]/g, ''); // Remove punctuation
+  const isLikelyNoise = noSpeechIndicators.some(indicator => 
+    lowerTranscript === indicator || 
+    lowerTranscript.includes(indicator)
+  );
+
+  if (isLikelyNoise) {
+    return 'Only background noise or filler words detected. Please try speaking more clearly.';
+  }
+
+  return null;
+};
+
 interface UseVoiceRecorderReturn {
   recordingState: RecordingState;
   startRecording: () => Promise<void>;
@@ -143,6 +190,10 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     return validateAudioBlobPure(blob);
   }, []);
 
+  const validateTranscription = useCallback((transcript: string): string | null => {
+    return validateTranscriptionResult(transcript);
+  }, []);
+
   const transcribeAudioBlob = useCallback(async (blob: Blob) => {
     try {
       setRecordingState('transcribing');
@@ -177,6 +228,14 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       if (result.success) {
         const originalTranscript = result.transcript;
         console.log('Transcription completed:', originalTranscript);
+        
+        // Validate transcription result
+        const transcriptionError = validateTranscription(originalTranscript);
+        if (transcriptionError) {
+          setError(transcriptionError);
+          setRecordingState('idle');
+          return;
+        }
         
         // Step 2: Grammar correction
         try {
@@ -240,7 +299,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     } finally {
       setRecordingState('idle');
     }
-  }, [userData.prompt]);
+  }, [userData.prompt, validateTranscription]);
 
   const confirmTranscription = useCallback(async () => {
     if (audioBlob && recordingState === 'awaiting_confirmation') {
