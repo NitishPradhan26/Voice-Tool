@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserTransformations, addUserTransformations } from '@/services/promptService';
+import { getUserTransformations, addUserTransformations } from '@/services/userDataService';
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserPrompt, updateUserPrompt } from '@/services/promptService';
+import { getUserPrompt, updateUserPrompt } from '@/services/userDataService';
 
 export async function GET(request: NextRequest) {
   try {

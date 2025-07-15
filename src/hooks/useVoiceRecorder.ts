@@ -176,11 +176,6 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
 
       if (result.success) {
         const originalTranscript = result.transcript;
-        setTranscript(originalTranscript);
-        
-        // Calculate word count for original transcript
-        const words = originalTranscript.trim().split(/\s+/).filter((word: string) => word.length > 0);
-        setWordCount(words.length);
         console.log('Transcription completed:', originalTranscript);
         
         // Step 2: Grammar correction
@@ -207,17 +202,33 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
           const grammarResult = await grammarResponse.json();
           
           if (grammarResult.success) {
-            setTranscript(grammarResult.correctedText);
+            const finalTranscript = grammarResult.correctedText;
+            setTranscript(finalTranscript);
             setFuzzyMatches(grammarResult.fuzzyMatches || {});
-            console.log('Grammar correction completed:', grammarResult.correctedText);
+            
+            // Calculate word count for final corrected transcript
+            const words = finalTranscript.trim().split(/\s+/).filter((word: string) => word.length > 0);
+            setWordCount(words.length);
+            
+            console.log('Grammar correction completed:', finalTranscript);
             console.log('Fuzzy matches found:', grammarResult.fuzzyMatches);
           } else {
             console.warn('Grammar correction failed, using original transcript:', grammarResult.error);
-            // Keep original transcript if grammar correction fails
+            // Use original transcript if grammar correction fails
+            setTranscript(originalTranscript);
+            
+            // Calculate word count for original transcript
+            const words = originalTranscript.trim().split(/\s+/).filter((word: string) => word.length > 0);
+            setWordCount(words.length);
           }
         } catch (grammarError) {
           console.warn('Grammar correction error, using original transcript:', grammarError);
-          // Keep original transcript if grammar correction fails
+          // Use original transcript if grammar correction fails
+          setTranscript(originalTranscript);
+          
+          // Calculate word count for original transcript
+          const words = originalTranscript.trim().split(/\s+/).filter((word: string) => word.length > 0);
+          setWordCount(words.length);
         }
       } else {
         console.error('API Error Response:', result);

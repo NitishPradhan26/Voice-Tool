@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserDiscardedFuzzy, addUserDiscardedFuzzy } from '@/services/promptService';
+import { getUserDiscardedFuzzy, addUserDiscardedFuzzy } from '@/services/userDataService';
 
 export async function GET(request: NextRequest) {
   try {

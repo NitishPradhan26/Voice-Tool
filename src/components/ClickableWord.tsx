@@ -1,24 +1,24 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Fuse from 'fuse.js';
-import vocab from '@/data/vocab.json';
 
 interface ClickableWordProps {
   word: string;
   onCorrection: (incorrectWord: string, correctWord: string) => void;
 }
 
-// Initialize Fuse.js
-const fuse = new Fuse(vocab, {
-  includeScore: true,
-  threshold: 0.4,
-});
+interface SuggestionResponse {
+  suggestions: Array<{
+    word: string;
+    score?: number;
+  }>;
+}
 
 export default function ClickableWord({ word, onCorrection }: ClickableWordProps) {
   const [showPopup, setShowPopup] = useState(false);
   const [correction, setCorrection] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const wordRef = useRef<HTMLSpanElement>(null);
 
@@ -28,6 +28,7 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
       if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
         setShowPopup(false);
         setCorrection('');
+        setSuggestions([]);
       }
     };
 
@@ -40,15 +41,31 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
     };
   }, [showPopup]);
 
+  const fetchSuggestions = async (searchWord: string) => {
+    setIsLoadingSuggestions(true);
+    try {
+      const response = await fetch(`/api/suggest?word=${encodeURIComponent(searchWord)}&limit=3`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch suggestions');
+      }
+      const data: SuggestionResponse = await response.json();
+      setSuggestions(data.suggestions.map(s => s.word));
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
   const handleWordClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowPopup(true);
     setCorrection('');
     
-    // Generate suggestions using Fuse.js
+    // Fetch suggestions from server
     const cleanWord = word.replace(/[^\w]/g, '');
-    const results = fuse.search(cleanWord).slice(0, 3);
-    setSuggestions(results.map(r => r.item));
+    fetchSuggestions(cleanWord);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -99,9 +116,14 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
               </label>
               
               {/* Suggestions */}
-              {suggestions.length > 0 && (
-                <div className="space-y-1 mb-3">
-                  <p className="text-xs text-gray-500 font-medium">Suggestions:</p>
+              <div className="space-y-1 mb-3">
+                <p className="text-xs text-gray-500 font-medium">Suggestions:</p>
+                {isLoadingSuggestions ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    <span className="ml-2 text-sm text-gray-500">Loading...</span>
+                  </div>
+                ) : suggestions.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {suggestions.map((suggestion, index) => (
                       <button
@@ -119,8 +141,10 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
                       </button>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-gray-400 italic">No suggestions found</p>
+                )}
+              </div>
               
               {/* Manual input */}
               <form onSubmit={handleSubmit}>

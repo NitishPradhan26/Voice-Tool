@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../route';
 import { parseRequest, processTranscription } from '../../../../services/transcriptionService';
-import { getUserTransformations } from '../../../../services/promptService';
+import { getUserTransformations } from '../../../../services/userDataService';
 import { applyWordTransformations } from '../../../../utils/textTransformations';
 
 // Mock dependencies
 jest.mock('../../../../services/transcriptionService');
-jest.mock('../../../../services/promptService');
+jest.mock('../../../../services/userDataService');
 jest.mock('../../../../utils/textTransformations');
 
 const mockParseRequest = parseRequest as jest.MockedFunction<typeof parseRequest>;

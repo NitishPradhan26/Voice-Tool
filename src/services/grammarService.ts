@@ -1,5 +1,5 @@
 import { getOpenAIClient } from '@/lib/openAI';
-import { getUserTransformations, getUserDiscardedFuzzy } from '@/services/promptService';
+import { getUserTransformations, getUserDiscardedFuzzy } from '@/services/userDataService';
 import { applyWordTransformations, FuzzyMatchMap } from '@/utils/textTransformations';
 
 interface GrammarCorrectionResult {
