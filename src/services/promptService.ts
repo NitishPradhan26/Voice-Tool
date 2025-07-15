@@ -52,7 +52,8 @@ export async function createDefaultPrompt(uid: string): Promise<void> {
     const userDocRef = doc(db, 'Customers', uid);
     await setDoc(userDocRef, {
       prompt: DEFAULT_PROMPT,
-      corrected_words: {} // Initialize as empty object, not null
+      corrected_words: {}, // Initialize as empty object, not null
+      discarded_fuzzy: {} // Initialize discarded fuzzy matches as empty object
     });
     
     console.log('User initialized with default data:', uid);
@@ -131,6 +132,58 @@ export async function addUserTransformations(uid: string, transformations: Recor
     console.log('Transformations added successfully for user:', uid);
   } catch (error) {
     console.error('Error adding user transformations:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user's discarded fuzzy matches from Firestore
+ * @param uid - User's UID
+ * @returns Promise<Record<string, string>> - Object with ignored_word->fuzzy_match mappings
+ */
+export async function getUserDiscardedFuzzy(uid: string): Promise<Record<string, string>> {
+  try {
+    const userDocRef = doc(db, 'Customers', uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      console.log('User discarded fuzzy data:', userData.discarded_fuzzy);
+      return userData.discarded_fuzzy || {};
+    }
+    
+    // User doesn't exist - initialize with default data
+    await createDefaultPrompt(uid);
+    return {};
+  } catch (error) {
+    console.error('Error getting user discarded fuzzy:', error);
+    return {};
+  }
+}
+
+/**
+ * Add user's discarded fuzzy matches to Firestore
+ * @param uid - User's UID
+ * @param discardedFuzzy - Object with ignored_word->fuzzy_match mappings
+ * @returns Promise<void>
+ */
+export async function addUserDiscardedFuzzy(uid: string, discardedFuzzy: Record<string, string>): Promise<void> {
+  try {
+    const userDocRef = doc(db, 'Customers', uid);
+    
+    // Build update object with dot notation for nested fields
+    const updateData: Record<string, string> = {};
+    
+    // Add each discarded fuzzy match as a nested field update
+    Object.entries(discardedFuzzy).forEach(([ignoredWord, fuzzyMatch]) => {
+      updateData[`discarded_fuzzy.${ignoredWord}`] = fuzzyMatch;
+    });
+    
+    // Update the user document - this adds to existing discarded_fuzzy
+    await updateDoc(userDocRef, updateData);
+    console.log('Discarded fuzzy matches added successfully for user:', uid);
+  } catch (error) {
+    console.error('Error adding user discarded fuzzy:', error);
     throw error;
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { correctGrammar } from '@/services/grammarService';
+import { FuzzyMatchMap } from '@/utils/textTransformations';
 
 // Configure API route
 export const runtime = 'nodejs';
@@ -11,6 +12,7 @@ interface GrammarCorrectionResponse {
   originalText?: string;
   error?: string;
   duration?: number;
+  fuzzyMatches?: FuzzyMatchMap;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<GrammarCorrectionResponse>> {
@@ -37,7 +39,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<GrammarCo
         success: true,
         correctedText: text,
         originalText: text,
-        duration: 0
+        duration: 0,
+        fuzzyMatches: {}
       });
     }
 
@@ -48,7 +51,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<GrammarCo
       success: true,
       correctedText: result.correctedText,
       originalText: text,
-      duration: result.duration
+      duration: result.duration,
+      fuzzyMatches: result.fuzzyMatches
     });
 
   } catch (error) {

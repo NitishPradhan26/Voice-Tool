@@ -1,10 +1,11 @@
 import { getOpenAIClient } from '@/lib/openAI';
-import { getUserTransformations } from '@/services/promptService';
-import { applyWordTransformations } from '@/utils/textTransformations';
+import { getUserTransformations, getUserDiscardedFuzzy } from '@/services/promptService';
+import { applyWordTransformations, FuzzyMatchMap } from '@/utils/textTransformations';
 
 interface GrammarCorrectionResult {
   correctedText: string;
   duration: number;
+  fuzzyMatches: FuzzyMatchMap;
 }
 
 /**
@@ -73,15 +74,20 @@ export async function correctGrammar(
     
     const json = JSON.parse(responseContent);
     let finalText = json.corrected || text;
+    let fuzzyMatches: FuzzyMatchMap = {};
     
     // Apply user transformations after grammar correction
     if (uid) {
       try {
         console.log('Getting user transformations for user:', uid);
         const userTransformations = await getUserTransformations(uid);
+        const discardedFuzzy = await getUserDiscardedFuzzy(uid);
         if (Object.keys(userTransformations).length > 0) {
-          finalText = applyWordTransformations(finalText, userTransformations);
+          const result = applyWordTransformations(finalText, userTransformations, discardedFuzzy);
+          finalText = result.transformedText;
+          fuzzyMatches = result.fuzzyMatches;
           console.log('Applied user transformations to grammar-corrected text');
+          console.log('Fuzzy matches:', fuzzyMatches);
         }
       } catch (transformError) {
         console.warn('Transformation failed:', transformError);
@@ -97,7 +103,8 @@ export async function correctGrammar(
     
     return {
       correctedText: finalText,
-      duration
+      duration,
+      fuzzyMatches
     };
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -106,7 +113,8 @@ export async function correctGrammar(
     // If correction fails, return original text
     return {
       correctedText: text,
-      duration
+      duration,
+      fuzzyMatches: {}
     };
   }
 }

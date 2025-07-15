@@ -2,87 +2,41 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-// Removed direct service imports - now using API endpoints
+import { useUserData } from '@/contexts/UserDataContext';
 
 export default function Settings() {
   const { user } = useAuth();
-  const [prompt, setPrompt] = useState<string>('')
+  const { userData, updatePrompt } = useUserData();
+  const [localPrompt, setLocalPrompt] = useState<string>('')
   const [promptLoading, setPromptLoading] = useState<boolean>(false);
-  const [savedPrompt, setSavedPrompt] = useState<string>('');
   const [hasChanges, setHasChanges] = useState<boolean>(false);
   const [justSaved, setJustSaved] = useState<boolean>(false);
-  
-  const [transformations, setTransformations] = useState<Record<string, string>>({});
-  const [transformationsLoading, setTransformationsLoading] = useState<boolean>(false);
 
-  // Load user's saved prompt and transformations on component mount
+  // Load user's saved prompt from context
   useEffect(() => {
-    const loadUserData = async () => {
-      if (user) {
-        setPromptLoading(true);
-        setTransformationsLoading(true);
-        
-        try {
-          const [promptResponse, transformationsResponse] = await Promise.all([
-            fetch(`/api/user/prompt?uid=${user.uid}`),
-            fetch(`/api/user/transformations?uid=${user.uid}`)
-          ]);
-
-          if (!promptResponse.ok || !transformationsResponse.ok) {
-            throw new Error('Failed to fetch user data');
-          }
-
-          const promptData = await promptResponse.json();
-          const transformationsData = await transformationsResponse.json();
-          
-          setPrompt(promptData.prompt);
-          setSavedPrompt(promptData.prompt);
-          setTransformations(transformationsData.transformations);
-          setHasChanges(false);
-          setJustSaved(false);
-        } catch (error) {
-          console.error('Error loading user data:', error);
-        } finally {
-          setPromptLoading(false);
-          setTransformationsLoading(false);
-        }
-      }
-    };
-    
-    loadUserData();
-  }, [user]);
+    if (userData.prompt !== undefined) {
+      setLocalPrompt(userData.prompt);
+      setHasChanges(false);
+      setJustSaved(false);
+    }
+  }, [userData.prompt]);
   
   // Check if current prompt has changes
   useEffect(() => {
-    if (savedPrompt) { // Only check after initial load
-      setHasChanges(prompt !== savedPrompt);
-      if (prompt !== savedPrompt) {
+    if (userData.prompt !== undefined) {
+      setHasChanges(localPrompt !== userData.prompt);
+      if (localPrompt !== userData.prompt) {
         setJustSaved(false); // Clear saved state when user makes changes
       }
     }
-  }, [prompt, savedPrompt]);
+  }, [localPrompt, userData.prompt]);
   
   const handleSavePrompt = async () => {
     if (!user) return;
     
     setPromptLoading(true);
     try {
-      const response = await fetch('/api/user/prompt', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          uid: user.uid,
-          prompt: prompt
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save prompt');
-      }
-
-      setSavedPrompt(prompt);
+      await updatePrompt(localPrompt);
       setHasChanges(false);
       setJustSaved(true);
       console.log('Prompt saved successfully');
@@ -160,8 +114,8 @@ export default function Settings() {
             <div>
               <textarea
                 id="prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                value={localPrompt}
+                onChange={(e) => setLocalPrompt(e.target.value)}
                 disabled={promptLoading}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:cursor-not-allowed text-gray-900 placeholder-gray-500"
                 rows={4}
@@ -206,16 +160,16 @@ export default function Settings() {
           </p>
           
           <div>
-            {transformationsLoading ? (
+            {userData.isLoading ? (
               <div className="text-center py-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
                 <p className="text-gray-600 mt-2">Loading corrections...</p>
               </div>
-            ) : Object.keys(transformations).length === 0 ? (
+            ) : Object.keys(userData.correctedWords).length === 0 ? (
               <p className="text-gray-500 text-sm italic">No word corrections configured yet.</p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {Object.entries(transformations).map(([incorrect, correct]) => (
+                {Object.entries(userData.correctedWords).map(([incorrect, correct]) => (
                   <div key={incorrect} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md">
                     <div className="flex items-center space-x-3">
                       <span className="text-sm font-medium text-gray-700">{incorrect}</span>

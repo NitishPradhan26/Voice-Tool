@@ -1,19 +1,24 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import ClickableWord from './ClickableWord';
-import { applyWordTransformations } from '@/utils/textTransformations';
+import FuzzyMatchWord from './FuzzyMatchWord';
+import { applyWordTransformations, FuzzyMatchMap } from '@/utils/textTransformations';
 
 interface TranscriptDisplayProps {
   transcript: string;
   onWordCorrection: (originalWord: string, correctedWord: string) => void;
   correctedWords: Record<string, string>;
+  discardedFuzzy?: Record<string, string>;
+  fuzzyMatches?: FuzzyMatchMap;
 }
 
 export default function TranscriptDisplay({ 
   transcript, 
   onWordCorrection, 
-  correctedWords 
+  correctedWords,
+  discardedFuzzy = {},
+  fuzzyMatches = {}
 }: TranscriptDisplayProps) {
   const [showBanner, setShowBanner] = useState<boolean>(false);
 
@@ -28,10 +33,9 @@ export default function TranscriptDisplay({
       setShowBanner(false);
     }, 3000);
   };
-  // Apply corrections to transcript for display
-  const displayTranscript = useMemo(() => {
-    return applyWordTransformations(transcript, correctedWords);
-  }, [transcript, correctedWords]);
+  
+  // Use pre-processed transcript and fuzzy matches from grammar service
+  const displayTranscript = transcript;
 
   // Split transcript into words while preserving whitespace and punctuation
   const renderClickableTranscript = () => {
@@ -48,13 +52,28 @@ export default function TranscriptDisplay({
       
       // If it contains word characters, make it clickable
       if (/\w/.test(part)) {
-        return (
-          <ClickableWord
-            key={index}
-            word={part}
-            onCorrection={handleWordCorrection}
-          />
-        );
+        // Check if this word is a fuzzy match
+        const cleanPart = part.replace(/[^\w]/g, '');
+        const isFuzzyMatch = fuzzyMatches[cleanPart] !== undefined;
+        
+        if (isFuzzyMatch) {
+          return (
+            <FuzzyMatchWord
+              key={index}
+              word={part}
+              fuzzyMatch={fuzzyMatches[cleanPart]}
+              onCorrection={handleWordCorrection}
+            />
+          );
+        } else {
+          return (
+            <ClickableWord
+              key={index}
+              word={part}
+              onCorrection={handleWordCorrection}
+            />
+          );
+        }
       }
       
       // Otherwise (punctuation only), render as-is

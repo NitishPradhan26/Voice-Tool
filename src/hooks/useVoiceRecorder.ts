@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { applyWordTransformations } from '@/utils/textTransformations';
+import { useUserData } from '@/contexts/UserDataContext';
+import { applyWordTransformations, FuzzyMatchMap } from '@/utils/textTransformations';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing' | 'correcting_grammar';
 
@@ -24,51 +25,31 @@ interface UseVoiceRecorderReturn {
   recordingState: RecordingState;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
-  confirmTranscription: (prompt?: string) => Promise<void>;
+  confirmTranscription: () => Promise<void>;
   cancelRecording: () => void;
   audioBlob: Blob | null;
   transcript: string | null;
   error: string | null;
   audioDuration: number;
   wordCount: number;
-  prompt: string;
-  correctedWords: Record<string, string>;
+  fuzzyMatches: FuzzyMatchMap;
   handleWordCorrection: (originalWord: string, correctedWord: string) => Promise<void>;
 }
 
 export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   const { user } = useAuth();
+  const { userData, addCorrection } = useUserData();
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number>(0);
   const [wordCount, setWordCount] = useState<number>(0);
-  const [prompt, setPrompt] = useState<string>('');
-  const [correctedWords, setCorrectedWords] = useState<Record<string, string>>({});
+  const [fuzzyMatches, setFuzzyMatches] = useState<FuzzyMatchMap>({});
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number | null>(null);
-
-  // Load user's saved prompt on component mount or user change
-  useEffect(() => {
-    const loadUserPrompt = async () => {
-      if (user) {
-        try {
-          const response = await fetch(`/api/user/prompt?uid=${user.uid}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch user prompt');
-          }
-          const data = await response.json();
-          setPrompt(data.prompt);
-        } catch (error) {
-          console.error('Error loading user prompt:', error);
-        }
-      }
-    };
-    loadUserPrompt();
-  }, [user]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -77,6 +58,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       setTranscript(null);
       setAudioDuration(0);
       setWordCount(0);
+      setFuzzyMatches({});
       
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -161,11 +143,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     return validateAudioBlobPure(blob);
   }, []);
 
-  const transcribeAndApplyfiler = useCallback(async (blob: Blob) => {
-
-  }, []);
-
-  const transcribeAudioBlob = useCallback(async (blob: Blob, prompt?: string) => {
+  const transcribeAudioBlob = useCallback(async (blob: Blob) => {
     try {
       setRecordingState('transcribing');
       setError(null);
@@ -178,8 +156,8 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
 
       const formData = new FormData();
       formData.append('audio', blob, 'recording.webm');
-      if (prompt) {
-        formData.append('prompt', prompt);
+      if (userData.prompt) {
+        formData.append('prompt', userData.prompt);
       }
       if (user) {
         formData.append('uid', user.uid);
@@ -217,7 +195,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
             },
             body: JSON.stringify({
               text: originalTranscript,
-              userPrompt: prompt,
+              userPrompt: userData.prompt,
               uid: user?.uid
             }),
           });
@@ -230,7 +208,9 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
           
           if (grammarResult.success) {
             setTranscript(grammarResult.correctedText);
+            setFuzzyMatches(grammarResult.fuzzyMatches || {});
             console.log('Grammar correction completed:', grammarResult.correctedText);
+            console.log('Fuzzy matches found:', grammarResult.fuzzyMatches);
           } else {
             console.warn('Grammar correction failed, using original transcript:', grammarResult.error);
             // Keep original transcript if grammar correction fails
@@ -249,42 +229,34 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     } finally {
       setRecordingState('idle');
     }
-  }, []);
+  }, [userData.prompt]);
 
-  const confirmTranscription = useCallback(async (prompt?: string) => {
+  const confirmTranscription = useCallback(async () => {
     if (audioBlob && recordingState === 'awaiting_confirmation') {
-      await transcribeAudioBlob(audioBlob, prompt);
+      await transcribeAudioBlob(audioBlob);
     }
   }, [audioBlob, recordingState, transcribeAudioBlob]);
 
+  const updateTranscriptWithCorrection = useCallback((originalWord: string, correctedWord: string) => {
+    setTranscript(prevTranscript => {
+      if (!prevTranscript) return prevTranscript;
+      
+      // Replace all instances of the original word with the corrected word
+      // Use word boundaries to avoid partial matches
+      const regex = new RegExp(`\\b${originalWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      return prevTranscript.replace(regex, correctedWord);
+    });
+  }, []);
+
   const handleWordCorrection = useCallback(async (originalWord: string, correctedWord: string) => {
-    // Update local corrections map for immediate UI feedback
-    setCorrectedWords(prev => ({
-      ...prev,
-      [originalWord]: correctedWord
-    }));
-    
-    // Save only this single correction to server
-    if (user) {
-      try {
-        await fetch('/api/user/transformations', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            transformations: {
-              [originalWord]: correctedWord  // Only send the single correction
-            }
-          })
-        });
-        console.log(`Word correction saved: "${originalWord}" → "${correctedWord}"`);
-      } catch (error) {
-        console.error('Error saving word correction:', error);
-      }
+    try {
+      await addCorrection(originalWord, correctedWord);
+      updateTranscriptWithCorrection(originalWord, correctedWord);
+      console.log(`Word correction saved: "${originalWord}" → "${correctedWord}"`);
+    } catch (error) {
+      console.error('Error saving word correction:', error);
     }
-  }, [user]);
+  }, [addCorrection, updateTranscriptWithCorrection]);
 
   const cancelRecording = useCallback(() => {
     if (recordingState === 'awaiting_confirmation') {
@@ -293,6 +265,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       setError(null);
       setAudioDuration(0);
       setWordCount(0);
+      setFuzzyMatches({});
       setRecordingState('idle');
     }
   }, [recordingState]);
@@ -308,8 +281,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     error,
     audioDuration,
     wordCount,
-    prompt,
-    correctedWords,
+    fuzzyMatches,
     handleWordCorrection
   };
 };

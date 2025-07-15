@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
-import { applyWordTransformations } from '@/utils/textTransformations';
-// Removed direct service import - now using API endpoint
+import { useUserData } from '@/contexts/UserDataContext';
 import TranscriptDisplay from './TranscriptDisplay';
 import MicWaveform from './WaveformAnimation';
 
@@ -19,11 +18,11 @@ export default function VoiceRecorder() {
     error,
     audioDuration,
     wordCount,
-    prompt,
-    correctedWords,
+    fuzzyMatches,
     handleWordCorrection
   } = useVoiceRecorder();
   
+  const { userData } = useUserData();
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const { user } = useAuth();
 
@@ -39,9 +38,8 @@ export default function VoiceRecorder() {
   const handleCopyTranscript = async () => {
     if (transcript) {
       try {
-        // Apply corrections before copying
-        const correctedTranscript = applyWordTransformations(transcript, correctedWords);
-        await navigator.clipboard.writeText(correctedTranscript);
+        // Copy the transcript as-is since it's already been transformed
+        await navigator.clipboard.writeText(transcript);
         setCopyStatus('copied');
         console.log('Transcript copied to clipboard');
         
@@ -141,7 +139,7 @@ export default function VoiceRecorder() {
           <div className="flex space-x-4">
             {/* Confirm Button */}
             <button
-              onClick={() => confirmTranscription(prompt)}
+              onClick={() => confirmTranscription()}
               className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300"
               aria-label="Confirm and transcribe recording"
             >
@@ -269,7 +267,9 @@ export default function VoiceRecorder() {
               <TranscriptDisplay 
                 transcript={transcript} 
                 onWordCorrection={handleWordCorrection}
-                correctedWords={correctedWords}
+                correctedWords={userData.correctedWords}
+                discardedFuzzy={userData.discardedFuzzy}
+                fuzzyMatches={fuzzyMatches}
               />
             </div>
           </div>
