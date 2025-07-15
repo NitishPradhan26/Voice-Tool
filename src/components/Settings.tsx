@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function Settings() {
   const { user } = useAuth();
-  const [prompt, setPrompt] = useState<string>('The following is a voice-to-text transcription. Please clean it up for grammar and clarity. Respond back with just the cleaned-up text.');
+  const [prompt, setPrompt] = useState<string>('')
   const [promptLoading, setPromptLoading] = useState<boolean>(false);
   const [savedPrompt, setSavedPrompt] = useState<string>('');
   const [hasChanges, setHasChanges] = useState<boolean>(false);
@@ -104,12 +104,51 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600 mt-2">Customize your transcription experience</p>
       </div>
 
       <div className="space-y-8">
+        {/* User Profile Section */}
+        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-100">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800">Profile</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Name</p>
+                <p className="text-sm font-medium text-gray-900">{user?.displayName || 'User'}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
+                <p className="text-sm font-medium text-gray-900">{user?.email}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Transcription Prompt Section */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Transcription Prompt</h2>
@@ -119,9 +158,6 @@ export default function Settings() {
           
           <div className="space-y-4">
             <div>
-              <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-                Default Prompt
-              </label>
               <textarea
                 id="prompt"
                 value={prompt}
@@ -164,6 +200,9 @@ export default function Settings() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Word Corrections</h2>
           <p className="text-gray-600 mb-4">
             Your current word corrections that are automatically applied to transcriptions.
+          </p>
+          <p className="text-gray-600 mb-4">
+            Original word → Corrected word
           </p>
           
           <div>

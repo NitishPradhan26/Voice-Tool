@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { applyWordTransformations } from '@/utils/textTransformations';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing' | 'correcting_grammar';
 
@@ -30,6 +31,9 @@ interface UseVoiceRecorderReturn {
   error: string | null;
   audioDuration: number;
   wordCount: number;
+  prompt: string;
+  correctedWords: Record<string, string>;
+  handleWordCorrection: (originalWord: string, correctedWord: string) => Promise<void>;
 }
 
 export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
@@ -40,10 +44,31 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   const [error, setError] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number>(0);
   const [wordCount, setWordCount] = useState<number>(0);
+  const [prompt, setPrompt] = useState<string>('');
+  const [correctedWords, setCorrectedWords] = useState<Record<string, string>>({});
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number | null>(null);
+
+  // Load user's saved prompt on component mount or user change
+  useEffect(() => {
+    const loadUserPrompt = async () => {
+      if (user) {
+        try {
+          const response = await fetch(`/api/user/prompt?uid=${user.uid}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch user prompt');
+          }
+          const data = await response.json();
+          setPrompt(data.prompt);
+        } catch (error) {
+          console.error('Error loading user prompt:', error);
+        }
+      }
+    };
+    loadUserPrompt();
+  }, [user]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -232,6 +257,35 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     }
   }, [audioBlob, recordingState, transcribeAudioBlob]);
 
+  const handleWordCorrection = useCallback(async (originalWord: string, correctedWord: string) => {
+    // Update local corrections map for immediate UI feedback
+    setCorrectedWords(prev => ({
+      ...prev,
+      [originalWord]: correctedWord
+    }));
+    
+    // Save only this single correction to server
+    if (user) {
+      try {
+        await fetch('/api/user/transformations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            transformations: {
+              [originalWord]: correctedWord  // Only send the single correction
+            }
+          })
+        });
+        console.log(`Word correction saved: "${originalWord}" → "${correctedWord}"`);
+      } catch (error) {
+        console.error('Error saving word correction:', error);
+      }
+    }
+  }, [user]);
+
   const cancelRecording = useCallback(() => {
     if (recordingState === 'awaiting_confirmation') {
       setAudioBlob(null);
@@ -253,6 +307,9 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     transcript,
     error,
     audioDuration,
-    wordCount
+    wordCount,
+    prompt,
+    correctedWords,
+    handleWordCorrection
   };
 };

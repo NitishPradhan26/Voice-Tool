@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { applyWordTransformations } from '@/utils/textTransformations';
@@ -18,12 +18,13 @@ export default function VoiceRecorder() {
     transcript, 
     error,
     audioDuration,
-    wordCount 
+    wordCount,
+    prompt,
+    correctedWords,
+    handleWordCorrection
   } = useVoiceRecorder();
   
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
-  const [prompt, setPrompt] = useState<string>('The following is a voice-to-text transcription. Please clean it up for grammar and clarity. Respond back with just the cleaned-up text.'); 
-  const [correctedWords, setCorrectedWords] = useState<Record<string, string>>({});
   const { user } = useAuth();
 
   const handleToggleRecording = async () => {
@@ -34,54 +35,6 @@ export default function VoiceRecorder() {
     }
   };
 
-  // Load user's saved prompt on component mount or user change
-  useEffect(() => {
-    const loadUserPrompt = async () => {
-      if (user) {
-        try {
-          const response = await fetch(`/api/user/prompt?uid=${user.uid}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch user prompt');
-          }
-          const data = await response.json();
-          setPrompt(data.prompt);
-        } catch (error) {
-          console.error('Error loading user prompt:', error);
-        }
-      }
-    };
-    loadUserPrompt();
-  }, [user]);
-  
-  
-  const handleWordCorrection = async (originalWord: string, correctedWord: string) => {
-    // Update local corrections map for immediate UI feedback
-    setCorrectedWords(prev => ({
-      ...prev,
-      [originalWord]: correctedWord
-    }));
-    
-    // Save only this single correction to server
-    if (user) {
-      try {
-        await fetch('/api/user/transformations', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            transformations: {
-              [originalWord]: correctedWord  // Only send the single correction
-            }
-          })
-        });
-        console.log(`Word correction saved: "${originalWord}" → "${correctedWord}"`);
-      } catch (error) {
-        console.error('Error saving word correction:', error);
-      }
-    }
-  };
 
   const handleCopyTranscript = async () => {
     if (transcript) {

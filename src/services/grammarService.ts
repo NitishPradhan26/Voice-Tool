@@ -24,9 +24,6 @@ export async function correctGrammar(
   // Initialize OpenAI client
   const openai = getOpenAIClient();
   
-  // Default grammar correction prompt
-  const defaultPrompt = `Fix grammar and spelling in the following text. Keep the original meaning and tone. Return only the corrected text without explanations or additional commentary.`;
-  
   // Set up timeout for grammar correction
   const GRAMMAR_TIMEOUT = 30000; // 30 seconds timeout
   const controller = new AbortController();
@@ -40,7 +37,7 @@ export async function correctGrammar(
   });
   
   console.log(`Starting grammar correction for text: "${text.substring(0, 100)}..."`);
-  
+  console.log('userPrompt', userPrompt);
   try {
     // Create grammar correction request with JSON response format
     const correctionPromise = openai.chat.completions.create({
@@ -49,14 +46,14 @@ export async function correctGrammar(
       messages: [
         {
           role: 'system',
-          content: 'Fix grammar and spelling in the provided text AND NOTHING ELSE. Return ONLY the corrected text in JSON format: {"corrected": "..."}'
+          content: userPrompt + 'Return ONLY the corrected text in JSON format: {"corrected": "..."}'
         },
         {
           role: 'user',
           content: text
         }
       ],
-      temperature: 0.1, // Low temperature for consistent corrections
+      temperature: 0.0, // Low temperature for consistent corrections
       max_tokens: Math.max(text.length * 2, 1000), // Ensure enough tokens for response
     }, {
       signal: controller.signal // Pass abort signal
