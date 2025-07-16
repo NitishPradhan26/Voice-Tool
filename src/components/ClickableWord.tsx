@@ -68,6 +68,32 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
     fetchSuggestions(cleanWord);
   };
 
+  // Adjust popup position to prevent overflow
+  useEffect(() => {
+    if (showPopup && popupRef.current && wordRef.current) {
+      const popup = popupRef.current;
+      const rect = popup.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      
+      // Reset transform to calculate natural position
+      popup.style.transform = 'translateX(-50%)';
+      popup.style.left = '50%';
+      
+      // Check if popup overflows on the right
+      if (rect.right > viewportWidth - 10) {
+        popup.style.left = 'auto';
+        popup.style.right = '0';
+        popup.style.transform = 'none';
+      }
+      // Check if popup overflows on the left
+      else if (rect.left < 10) {
+        popup.style.left = '0';
+        popup.style.right = 'auto';
+        popup.style.transform = 'none';
+      }
+    }
+  }, [showPopup, suggestions, isLoadingSuggestions]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (correction.trim() && correction.trim() !== cleanWord) {
@@ -102,11 +128,12 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
       {showPopup && (
         <div
           ref={popupRef}
-          className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[240px]"
+          className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-[240px] max-w-[90vw] sm:min-w-[240px] sm:w-auto"
           style={{
             left: '50%',
             transform: 'translateX(-50%)',
-            top: '100%'
+            top: '100%',
+            maxWidth: 'calc(100vw - 20px)'
           }}
         >
           <div className="space-y-3">
@@ -135,7 +162,8 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
                           setCorrection('');
                           setSuggestions([]);
                         }}
-                        className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 border border-blue-200 transition-colors"
+                        className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 border border-blue-200 transition-colors touch-manipulation"
+                        style={{ minHeight: '32px' }}
                       >
                         {suggestion}
                       </button>
@@ -164,14 +192,16 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
                       setCorrection('');
                       setSuggestions([]);
                     }}
-                    className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 transition-colors"
+                    className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors touch-manipulation"
+                    style={{ minHeight: '36px' }}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!correction.trim() || correction.trim() === cleanWord}
-                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors touch-manipulation"
+                    style={{ minHeight: '36px' }}
                   >
                     Replace All
                   </button>
