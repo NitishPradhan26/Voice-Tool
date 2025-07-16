@@ -20,7 +20,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<GrammarCo
     console.log('Grammar correction request received');
 
     const body = await request.json();
-    const { text, userPrompt, uid } = body;
+    const { text, userPrompt, userTransformations, discardedFuzzy } = body;
 
     // Validate required fields
     if (!text || typeof text !== 'string') {
@@ -45,7 +45,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<GrammarCo
     }
 
     // Perform grammar correction and apply user transformations
-    const result = await correctGrammar(text, userPrompt, uid);
+    const result = await correctGrammar(
+      text, 
+      userPrompt, 
+      userTransformations || {}, 
+      discardedFuzzy || {}
+    );
 
     return NextResponse.json({
       success: true,

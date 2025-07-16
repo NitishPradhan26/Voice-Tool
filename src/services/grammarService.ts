@@ -1,5 +1,4 @@
 import { getOpenAIClient } from '@/lib/openAI';
-import { getUserTransformations, getUserDiscardedFuzzy } from '@/services/userDataService';
 import { applyWordTransformations, FuzzyMatchMap } from '@/utils/textTransformations';
 
 interface GrammarCorrectionResult {
@@ -12,13 +11,15 @@ interface GrammarCorrectionResult {
  * Correct grammar and spelling in text using OpenAI, then apply user transformations
  * @param text - Text to correct
  * @param userPrompt - Optional custom prompt for grammar correction
- * @param uid - User ID for applying personal word transformations
+ * @param userTransformations - User's word correction dictionary
+ * @param discardedFuzzy - User's discarded fuzzy matches to avoid
  * @returns Promise<GrammarCorrectionResult> - Corrected text and duration
  */
 export async function correctGrammar(
   text: string, 
   userPrompt?: string,
-  uid?: string
+  userTransformations: Record<string, string> = {},
+  discardedFuzzy: Record<string, string> = {}
 ): Promise<GrammarCorrectionResult> {
   const startTime = Date.now();
   
@@ -77,18 +78,14 @@ export async function correctGrammar(
     let fuzzyMatches: FuzzyMatchMap = {};
     
     // Apply user transformations after grammar correction
-    if (uid) {
+    if (Object.keys(userTransformations).length > 0) {
       try {
-        console.log('Getting user transformations for user:', uid);
-        const userTransformations = await getUserTransformations(uid);
-        const discardedFuzzy = await getUserDiscardedFuzzy(uid);
-        if (Object.keys(userTransformations).length > 0) {
-          const result = applyWordTransformations(finalText, userTransformations, discardedFuzzy);
-          finalText = result.transformedText;
-          fuzzyMatches = result.fuzzyMatches;
-          console.log('Applied user transformations to grammar-corrected text');
-          console.log('Fuzzy matches:', fuzzyMatches);
-        }
+        console.log('Applying user transformations to grammar-corrected text');
+        const result = applyWordTransformations(finalText, userTransformations, discardedFuzzy);
+        finalText = result.transformedText;
+        fuzzyMatches = result.fuzzyMatches;
+        console.log('Applied user transformations to grammar-corrected text');
+        console.log('Fuzzy matches:', fuzzyMatches);
       } catch (transformError) {
         console.warn('Transformation failed:', transformError);
         // Continue with grammar-corrected text

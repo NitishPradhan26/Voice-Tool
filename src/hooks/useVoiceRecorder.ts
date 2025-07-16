@@ -254,7 +254,8 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
             body: JSON.stringify({
               text: originalTranscript,
               userPrompt: userData.prompt,
-              uid: user?.uid
+              userTransformations: userData.correctedWords,
+              discardedFuzzy: userData.discardedFuzzy
             }),
           });
           
