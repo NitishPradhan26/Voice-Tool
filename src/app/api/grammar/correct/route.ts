@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { correctGrammar } from '@/services/grammarService';
+import { processTextWithGrammarAndUserTransforms } from '@/services/grammarService';
 import { FuzzyMatchMap } from '@/utils/textTransformations';
 
 // Configure API route
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<GrammarCo
     }
 
     // Perform grammar correction and apply user transformations
-    const result = await correctGrammar(
+    const result = await processTextWithGrammarAndUserTransforms(
       text, 
       userPrompt, 
       userTransformations || {}, 

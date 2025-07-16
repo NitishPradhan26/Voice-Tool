@@ -19,7 +19,7 @@ export default function FuzzyMatchWord({ word, fuzzyMatch, onCorrection, onRever
   const tooltipRef = useRef<HTMLDivElement>(null);
   const wordRef = useRef<HTMLSpanElement>(null);
   const { user } = useAuth();
-  const { addDiscardedFuzzy } = useUserData();
+  const { addDiscardedFuzzy, refetchUserData } = useUserData();
 
   // Close tooltip when clicking outside
   useEffect(() => {
@@ -36,6 +36,41 @@ export default function FuzzyMatchWord({ word, fuzzyMatch, onCorrection, onRever
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [showTooltip]);
+
+  // Adjust tooltip position to prevent overflow on mobile
+  useEffect(() => {
+    if (showTooltip && tooltipRef.current && wordRef.current) {
+      const tooltip = tooltipRef.current;
+      const word = wordRef.current;
+      const viewportWidth = window.innerWidth;
+      const padding = 10;
+      
+      // Get word and tooltip positions
+      const wordRect = word.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      
+      // Calculate if tooltip would overflow
+      const tooltipWidth = tooltipRect.width;
+      const wordCenter = wordRect.left + wordRect.width / 2;
+      const tooltipLeft = wordCenter - tooltipWidth / 2;
+      const tooltipRight = tooltipLeft + tooltipWidth;
+      
+      // Reset classes
+      tooltip.classList.remove('left-0', 'right-0', 'left-1/2', '-translate-x-1/2');
+      
+      // Apply appropriate positioning
+      if (tooltipRight > viewportWidth - padding) {
+        // Tooltip overflows right, align to right edge
+        tooltip.classList.add('right-0');
+      } else if (tooltipLeft < padding) {
+        // Tooltip overflows left, align to left edge
+        tooltip.classList.add('left-0');
+      } else {
+        // Tooltip fits, center it
+        tooltip.classList.add('left-1/2', '-translate-x-1/2');
+      }
+    }
   }, [showTooltip]);
 
   const handleWordClick = (e: React.MouseEvent) => {
@@ -55,6 +90,9 @@ export default function FuzzyMatchWord({ word, fuzzyMatch, onCorrection, onRever
     try {
       // Use the context method to add discarded fuzzy match
       await addDiscardedFuzzy(fuzzyMatch.originalWord.toLowerCase(), fuzzyMatch.matchedKey);
+
+      // Refresh user data to get the latest context
+      await refetchUserData();
 
       // Revert the word in the transcript if the callback is provided
       if (onRevertFuzzyMatch) {
@@ -105,12 +143,8 @@ export default function FuzzyMatchWord({ word, fuzzyMatch, onCorrection, onRever
       {showTooltip && (
         <div
           ref={tooltipRef}
-          className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]"
-          style={{
-            left: '50%',
-            transform: 'translateX(-50%)',
-            top: '100%'
-          }}
+          className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px] max-w-[95vw]"
+          style={{ top: '100%' }}
         >
           <div className="space-y-3">
             <div className="border-b border-gray-200 pb-2">

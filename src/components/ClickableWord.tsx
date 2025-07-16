@@ -68,40 +68,40 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
     fetchSuggestions(cleanWord);
   };
 
-  // Adjust popup position to prevent overflow
+  // Adjust popup position to prevent overflow on mobile
   useEffect(() => {
     if (showPopup && popupRef.current && wordRef.current) {
       const popup = popupRef.current;
-      const rect = popup.getBoundingClientRect();
+      const word = wordRef.current;
       const viewportWidth = window.innerWidth;
+      const padding = 10;
       
-      // Reset transform to calculate natural position
-      popup.style.transform = 'translateX(-50%)';
-      popup.style.left = '50%';
+      // Get word and popup positions
+      const wordRect = word.getBoundingClientRect();
+      const popupRect = popup.getBoundingClientRect();
       
-      // Check if popup overflows on the right
-      if (rect.right > viewportWidth - 10) {
-        popup.style.left = 'auto';
-        popup.style.right = '0';
-        popup.style.transform = 'none';
-      }
-      // Check if popup overflows on the left
-      else if (rect.left < 10) {
-        popup.style.left = '0';
-        popup.style.right = 'auto';
-        popup.style.transform = 'none';
+      // Calculate if popup would overflow
+      const popupWidth = popupRect.width;
+      const wordCenter = wordRect.left + wordRect.width / 2;
+      const popupLeft = wordCenter - popupWidth / 2;
+      const popupRight = popupLeft + popupWidth;
+      
+      // Reset classes
+      popup.classList.remove('left-0', 'right-0', 'left-1/2', '-translate-x-1/2');
+      
+      // Apply appropriate positioning
+      if (popupRight > viewportWidth - padding) {
+        // Popup overflows right, align to right edge
+        popup.classList.add('right-0');
+      } else if (popupLeft < padding) {
+        // Popup overflows left, align to left edge
+        popup.classList.add('left-0');
+      } else {
+        // Popup fits, center it
+        popup.classList.add('left-1/2', '-translate-x-1/2');
       }
     }
   }, [showPopup, suggestions, isLoadingSuggestions]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (correction.trim() && correction.trim() !== cleanWord) {
-      onCorrection(cleanWord, correction.trim());
-      setShowPopup(false);
-      setCorrection('');
-    }
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -128,13 +128,8 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
       {showPopup && (
         <div
           ref={popupRef}
-          className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-[240px] max-w-[90vw] sm:min-w-[240px] sm:w-auto"
-          style={{
-            left: '50%',
-            transform: 'translateX(-50%)',
-            top: '100%',
-            maxWidth: 'calc(100vw - 20px)'
-          }}
+          className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-[240px] max-w-[95vw] sm:min-w-[240px] sm:w-auto"
+          style={{ top: '100%' }}
         >
           <div className="space-y-3">
             <div>
@@ -175,7 +170,7 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
               </div>
               
               {/* Manual input */}
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={() => onCorrection(cleanWord, correction)}>
                 <input
                   type="text"
                   value={correction}

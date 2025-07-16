@@ -8,14 +8,90 @@ interface GrammarCorrectionResult {
 }
 
 /**
- * Correct grammar and spelling in text using OpenAI, then apply user transformations
+ * Get grammar correction from OpenAI
  * @param text - Text to correct
+ * @param prompt - Grammar correction prompt
+ * @param timeoutMs - Timeout in milliseconds (default: 30000)
+ * @returns Promise<{ correctedText: string; duration: number }>
+ */
+export async function getGrammarCorrection(
+  text: string,
+  prompt: string,
+  timeoutMs = 30000
+): Promise<{ correctedText: string; duration: number }> {
+  const startTime = Date.now();
+  const openai = getOpenAIClient();
+  const controller = new AbortController();
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Grammar correction timed out after ${timeoutMs / 1000} seconds`));
+    }, timeoutMs);
+  });
+
+  try {
+    const correctionPromise = openai.chat.completions.create({
+      model: 'gpt-4-1106-preview',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: prompt + ' Return ONLY the corrected text in JSON format: {"corrected": "..."}',
+        },
+        {
+          role: 'user',
+          content: text,
+        },
+      ],
+      temperature: 0.0,
+      max_tokens: Math.max(text.length * 2, 1000),
+    }, { signal: controller.signal });
+
+    const response = await Promise.race([correctionPromise, timeoutPromise]);
+    const content = response.choices[0].message.content;
+    if (!content) throw new Error('No response content from OpenAI');
+    const json = JSON.parse(content);
+    return {
+      correctedText: json.corrected || text,
+      duration: Date.now() - startTime,
+    };
+  } catch (error) {
+    return { correctedText: text, duration: Date.now() - startTime };
+  }
+}
+
+/**
+ * Apply user transformations to text
+ * @param text - Text to transform
+ * @param userTransformations - User's word correction dictionary
+ * @param discardedFuzzy - User's discarded fuzzy matches to avoid
+ * @returns { transformedText: string; fuzzyMatches: FuzzyMatchMap }
+ */
+export function applyUserTransformations(
+  text: string,
+  userTransformations: Record<string, string>,
+  discardedFuzzy: Record<string, string>
+): { transformedText: string; fuzzyMatches: FuzzyMatchMap } {
+  try {
+    if (Object.keys(userTransformations).length > 0) {
+      return applyWordTransformations(text, userTransformations, discardedFuzzy);
+    }
+    return { transformedText: text, fuzzyMatches: {} };
+  } catch (error) {
+    console.warn('Transformation failed:', error);
+    return { transformedText: text, fuzzyMatches: {} };
+  }
+}
+
+/**
+ * Process text with grammar correction and user transformations
+ * @param text - Text to process
  * @param userPrompt - Optional custom prompt for grammar correction
  * @param userTransformations - User's word correction dictionary
  * @param discardedFuzzy - User's discarded fuzzy matches to avoid
- * @returns Promise<GrammarCorrectionResult> - Corrected text and duration
+ * @returns Promise<GrammarCorrectionResult>
  */
-export async function correctGrammar(
+export async function processTextWithGrammarAndUserTransforms(
   text: string, 
   userPrompt?: string,
   userTransformations: Record<string, string> = {},
@@ -23,74 +99,22 @@ export async function correctGrammar(
 ): Promise<GrammarCorrectionResult> {
   const startTime = Date.now();
   
-  // Initialize OpenAI client
-  const openai = getOpenAIClient();
-  
-  // Set up timeout for grammar correction
-  const GRAMMAR_TIMEOUT = 30000; // 30 seconds timeout
-  const controller = new AbortController();
-  
-  // Create timeout promise
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      controller.abort();
-      reject(new Error(`Grammar correction timed out after ${GRAMMAR_TIMEOUT / 1000} seconds`));
-    }, GRAMMAR_TIMEOUT);
-  });
-  
   console.log(`Starting grammar correction for text: "${text.substring(0, 100)}..."`);
   console.log('userPrompt', userPrompt);
+  
   try {
-    // Create grammar correction request with JSON response format
-    const correctionPromise = openai.chat.completions.create({
-      model: 'gpt-4-1106-preview', // Better for structured JSON responses
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: userPrompt + 'Return ONLY the corrected text in JSON format: {"corrected": "..."}'
-        },
-        {
-          role: 'user',
-          content: text
-        }
-      ],
-      temperature: 0.0, // Low temperature for consistent corrections
-      max_tokens: Math.max(text.length * 2, 1000), // Ensure enough tokens for response
-    }, {
-      signal: controller.signal // Pass abort signal
-    });
-    
-    // Race between correction and timeout
-    const response = await Promise.race([
-      correctionPromise,
-      timeoutPromise
-    ]);
-    
-    // Parse JSON response to get only the corrected text
-    const responseContent = response.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('No response content from OpenAI');
-    }
-    
-    const json = JSON.parse(responseContent);
-    let finalText = json.corrected || text;
-    let fuzzyMatches: FuzzyMatchMap = {};
+    // Get grammar correction
+    const { correctedText: grammarCorrectedText } = await getGrammarCorrection(
+      text, 
+      userPrompt || 'Correct the grammar and spelling in the following text.'
+    );
     
     // Apply user transformations after grammar correction
-    if (Object.keys(userTransformations).length > 0) {
-      try {
-        console.log('Applying user transformations to grammar-corrected text');
-        const result = applyWordTransformations(finalText, userTransformations, discardedFuzzy);
-        finalText = result.transformedText;
-        fuzzyMatches = result.fuzzyMatches;
-        console.log('Applied user transformations to grammar-corrected text');
-        console.log('Fuzzy matches:', fuzzyMatches);
-      } catch (transformError) {
-        console.warn('Transformation failed:', transformError);
-        // Continue with grammar-corrected text
-      }
-    }
+    const { transformedText: finalText, fuzzyMatches } = applyUserTransformations(
+      grammarCorrectedText, 
+      userTransformations, 
+      discardedFuzzy
+    );
     
     const duration = Date.now() - startTime;
     
@@ -115,3 +139,4 @@ export async function correctGrammar(
     };
   }
 }
+
