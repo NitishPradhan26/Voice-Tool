@@ -9,9 +9,10 @@ interface FuzzyMatchWordProps {
   word: string;
   fuzzyMatch: FuzzyMatch;
   onCorrection: (originalWord: string, correctedWord: string) => void;
+  onRevertFuzzyMatch?: (correctedWord: string, originalWord: string) => void;
 }
 
-export default function FuzzyMatchWord({ word, fuzzyMatch, onCorrection }: FuzzyMatchWordProps) {
+export default function FuzzyMatchWord({ word, fuzzyMatch, onCorrection, onRevertFuzzyMatch }: FuzzyMatchWordProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
@@ -54,6 +55,11 @@ export default function FuzzyMatchWord({ word, fuzzyMatch, onCorrection }: Fuzzy
     try {
       // Use the context method to add discarded fuzzy match
       await addDiscardedFuzzy(fuzzyMatch.originalWord.toLowerCase(), fuzzyMatch.matchedKey);
+
+      // Revert the word in the transcript if the callback is provided
+      if (onRevertFuzzyMatch) {
+        onRevertFuzzyMatch(fuzzyMatch.correctedWord, fuzzyMatch.originalWord);
+      }
 
       // Close tooltip and show success banner
       setShowTooltip(false);

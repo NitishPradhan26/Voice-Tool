@@ -55,8 +55,29 @@ export default function MicWaveform({ isRecording }: MicWaveformProps) {
         const sliceWidth = canvas!.width / bufferLength;
         let x = 0;
 
+        // Calculate average audio level to detect if there's actual audio input
+        let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
-          const v = dataArrayRef.current[i] / 128.0;
+          sum += Math.abs(dataArrayRef.current[i] - 128);
+        }
+        const averageLevel = sum / bufferLength;
+        const isAudioDetected = averageLevel > 0.5; // Threshold for audio detection
+
+        // Generate time-based animation for default vibration
+        const time = Date.now() * 0.003; // Slower animation
+
+        for (let i = 0; i < bufferLength; i++) {
+          let v = dataArrayRef.current[i] / 128.0;
+          
+          // If no significant audio is detected, add gentle default vibration
+          if (!isAudioDetected) {
+            // Create subtle sine wave variations for different parts of the waveform
+            const wavePhase = (i / bufferLength) * Math.PI * 2;
+            const baseVibration = 0.98 + Math.sin(time + wavePhase) * 0.02; // Very subtle base vibration
+            const secondaryVibration = Math.sin(time * 1.5 + wavePhase * 0.5) * 0.015; // Secondary wave
+            v = baseVibration + secondaryVibration;
+          }
+          
           const y = (v * canvas!.height) / 2;
           if (i === 0) {
             ctx.moveTo(x, y);

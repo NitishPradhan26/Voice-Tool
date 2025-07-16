@@ -11,6 +11,7 @@ interface TranscriptDisplayProps {
   correctedWords: Record<string, string>;
   discardedFuzzy?: Record<string, string>;
   fuzzyMatches?: FuzzyMatchMap;
+  onRevertFuzzyMatch?: (correctedWord: string, originalWord: string) => void;
 }
 
 export default function TranscriptDisplay({ 
@@ -18,7 +19,8 @@ export default function TranscriptDisplay({
   onWordCorrection, 
   correctedWords,
   discardedFuzzy = {},
-  fuzzyMatches = {}
+  fuzzyMatches = {},
+  onRevertFuzzyMatch
 }: TranscriptDisplayProps) {
   const [showBanner, setShowBanner] = useState<boolean>(false);
 
@@ -63,6 +65,7 @@ export default function TranscriptDisplay({
               word={part}
               fuzzyMatch={fuzzyMatches[cleanPart]}
               onCorrection={handleWordCorrection}
+              onRevertFuzzyMatch={onRevertFuzzyMatch}
             />
           );
         } else {

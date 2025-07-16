@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserData } from '@/contexts/UserDataContext';
-import { applyWordTransformations, FuzzyMatchMap } from '@/utils/textTransformations';
+import { FuzzyMatchMap } from '@/utils/textTransformations';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing' | 'correcting_grammar';
 
@@ -84,6 +84,7 @@ interface UseVoiceRecorderReturn {
   wordCount: number;
   fuzzyMatches: FuzzyMatchMap;
   handleWordCorrection: (originalWord: string, correctedWord: string) => Promise<void>;
+  revertFuzzyMatch: (correctedWord: string, originalWord: string) => void;
 }
 
 export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
@@ -331,6 +332,26 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     }
   }, [addCorrection, updateTranscriptWithCorrection]);
 
+  const revertFuzzyMatch = useCallback((correctedWord: string, originalWord: string) => {
+    setTranscript(prevTranscript => {
+      if (!prevTranscript) return prevTranscript;
+      
+      // Replace the corrected word back to the original word
+      // Use word boundaries to avoid partial matches
+      const regex = new RegExp(`\\b${correctedWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      return prevTranscript.replace(regex, originalWord);
+    });
+    
+    // Remove the fuzzy match from the map since it's been reverted
+    setFuzzyMatches(prevMatches => {
+      const newMatches = { ...prevMatches };
+      delete newMatches[correctedWord];
+      return newMatches;
+    });
+    
+    console.log(`Fuzzy match reverted: "${correctedWord}" → "${originalWord}"`);
+  }, []);
+
   const cancelRecording = useCallback(() => {
     if (recordingState === 'awaiting_confirmation') {
       setAudioBlob(null);
@@ -355,6 +376,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     audioDuration,
     wordCount,
     fuzzyMatches,
-    handleWordCorrection
+    handleWordCorrection,
+    revertFuzzyMatch
   };
 };

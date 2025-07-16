@@ -19,7 +19,8 @@ export default function VoiceRecorder() {
     audioDuration,
     wordCount,
     fuzzyMatches,
-    handleWordCorrection
+    handleWordCorrection,
+    revertFuzzyMatch
   } = useVoiceRecorder();
   
   const { userData } = useUserData();
@@ -270,6 +271,7 @@ export default function VoiceRecorder() {
                 correctedWords={userData.correctedWords}
                 discardedFuzzy={userData.discardedFuzzy}
                 fuzzyMatches={fuzzyMatches}
+                onRevertFuzzyMatch={revertFuzzyMatch}
               />
             </div>
           </div>
