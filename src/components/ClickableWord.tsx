@@ -103,6 +103,16 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
     }
   }, [showPopup, suggestions, isLoadingSuggestions]);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (correction.trim() && correction.trim() !== cleanWord) {
+      onCorrection(cleanWord, correction.trim());
+      setShowPopup(false);
+      setCorrection('');
+      setSuggestions([]);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setShowPopup(false);
@@ -170,7 +180,7 @@ export default function ClickableWord({ word, onCorrection }: ClickableWordProps
               </div>
               
               {/* Manual input */}
-              <form onSubmit={() => onCorrection(cleanWord, correction)}>
+              <form onSubmit={handleSubmit}>
                 <input
                   type="text"
                   value={correction}
