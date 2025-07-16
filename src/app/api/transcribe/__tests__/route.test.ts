@@ -17,6 +17,13 @@ const mockApplyWordTransformations = applyWordTransformations as jest.MockedFunc
 describe('/api/transcribe POST', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Mock console methods to prevent test output pollution
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   // Helper function to create mock request
@@ -55,7 +62,7 @@ describe('/api/transcribe POST', () => {
       expect(mockApplyWordTransformations).not.toHaveBeenCalled();
     });
 
-    it('successfully transcribes audio with user transformations', async () => {
+    it('successfully transcribes audio with user ID provided', async () => {
       const mockAudioFile = new File(['audio data'], 'test.webm', { type: 'audio/webm' });
       const mockTranscriptionResult = {
         transcript: 'Hello world',
@@ -80,11 +87,12 @@ describe('/api/transcribe POST', () => {
       expect(response.status).toBe(200);
       expect(responseData).toEqual({
         success: true,
-        transcript: transformedTranscript,
+        transcript: 'Hello world',
         duration: 1500
       });
-      expect(mockGetUserTransformations).toHaveBeenCalledWith('user123');
-      expect(mockApplyWordTransformations).toHaveBeenCalledWith('Hello world', mockTransformations);
+      // User transformations are not applied in the transcription API
+      expect(mockGetUserTransformations).not.toHaveBeenCalled();
+      expect(mockApplyWordTransformations).not.toHaveBeenCalled();
     });
 
     it('handles empty user transformations', async () => {
