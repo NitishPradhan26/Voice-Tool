@@ -304,7 +304,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     } finally {
       setRecordingState('idle');
     }
-  }, [userData.prompt, validateTranscription]);
+  }, [userData.prompt, userData.correctedWords, userData.discardedFuzzy, validateTranscription]);
 
   const confirmTranscription = useCallback(async () => {
     if (audioBlob && recordingState === 'awaiting_confirmation') {
