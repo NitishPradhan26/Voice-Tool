@@ -170,7 +170,23 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       setRecordingState('recording');
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start recording';
+      let errorMessage = 'Failed to start recording';
+      
+      if (err instanceof Error) {
+        // Handle specific microphone permission errors
+        if (err.name === 'NotAllowedError' || err.message.includes('Permission denied')) {
+          errorMessage = 'Microphone access is blocked by the browser. Please enable it in your browser settings and try again.';
+        } else if (err.name === 'NotFoundError') {
+          errorMessage = 'No microphone found. Please ensure a microphone is connected and try again.';
+        } else if (err.name === 'NotReadableError') {
+          errorMessage = 'Microphone is already in use by another application. Please close other applications using the microphone and try again.';
+        } else if (err.name === 'OverconstrainedError') {
+          errorMessage = 'Microphone does not support the required audio settings. Please try with a different microphone.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
       setError(errorMessage);
       setRecordingState('idle');
     }
