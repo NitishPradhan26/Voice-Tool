@@ -43,7 +43,7 @@ export function applyWordTransformations(
   const transformationKeys = Object.keys(map);
   const fuse = new Fuse(transformationKeys, {
     includeScore: true,
-    threshold: 0.15,          // Much stricter threshold for corrections
+    threshold: 0.2,          // Much stricter threshold for corrections
     minMatchCharLength: 2,    // Avoid very short spurious matches
     ignoreLocation: true,     // Focus on character similarity
     findAllMatches: false,    // Only get best match
@@ -70,7 +70,7 @@ export function applyWordTransformations(
         const bestMatch = fuzzyResults[0];
         console.log("This is the best match", bestMatch);
         // 3. Apply correction only if score is good enough AND it's not an exact match
-        if (bestMatch.score !== undefined && bestMatch.score < 0.15 && bestMatch.score > 0) {
+        if (bestMatch.score !== undefined && bestMatch.score > 0) {
           // Length validation: max 20% difference in length
           const lengthDiff = Math.abs(word.length - bestMatch.item.length);
           const maxLengthDiff = Math.max(word.length, bestMatch.item.length) * 0.2; // 20% max difference

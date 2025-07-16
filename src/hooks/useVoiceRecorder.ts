@@ -39,27 +39,30 @@ export const validateTranscriptionResult = (transcript: string): string | null =
   }
 
   // Check for common Whisper "no speech" indicators
-  const noSpeechIndicators = [
+  const exactNoSpeechPhrases = [
     'thank you',
     'thanks',
-    '...',
-    '..',
-    'uh',
-    'um',
-    'you',
-    'bye',
     'thank you for watching',
+    'bye',
     'music',
-    '[music]',
-    '(music)',
     'silence'
   ];
 
+  const shortFillerWords = ['uh', 'um', 'you', '...', '..'];
+
   const lowerTranscript = trimmedTranscript.toLowerCase().replace(/[^\w\s]/g, ''); // Remove punctuation
-  const isLikelyNoise = noSpeechIndicators.some(indicator => 
-    lowerTranscript === indicator || 
-    lowerTranscript.includes(indicator)
+  
+  // Check for exact phrase matches
+  const isExactNoSpeechPhrase = exactNoSpeechPhrases.some(phrase => 
+    lowerTranscript === phrase
   );
+  
+  // Check for very short transcripts that are just filler words
+  const isShortFillerOnly = lowerTranscript.length <= 10 && shortFillerWords.some(filler => 
+    lowerTranscript === filler
+  );
+  
+  const isLikelyNoise = isExactNoSpeechPhrase || isShortFillerOnly;
 
   if (isLikelyNoise) {
     return 'Only background noise or filler words detected. Please try speaking more clearly.';
