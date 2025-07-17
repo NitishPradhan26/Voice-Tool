@@ -128,12 +128,47 @@ A powerful web application that converts speech to text using OpenAI's Whisper m
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
-       match /users/{userId} {
+       match /Customers/{userId} {
          allow read, write: if request.auth != null && request.auth.uid == userId;
        }
      }
    }
    ```
+
+4. **Database Schema Design**
+   
+   The application uses a simple, user-centric data model:
+   
+   ```
+   Collection: "Customers"
+   Document ID: {user_uid}
+   
+   Document Structure:
+   {
+     "prompt": "Custom grammar correction prompt (string)",
+     "corrected_words": {
+       "original_word": "corrected_word",
+       "another_word": "its_correction"
+     },
+     "discarded_fuzzy": {
+       "word1": "ignored_suggestion1",
+       "word2": "ignored_suggestion2"
+     }
+   }
+   ```
+   
+   **Schema Details:**
+   - **Collection Name**: `Customers` (contains all user data)
+   - **Document ID**: Firebase Auth UID (ensures user-specific access)
+   - **prompt**: String - Custom grammar correction instructions
+   - **corrected_words**: Object - User's word correction dictionary
+   - **discarded_fuzzy**: Object - Fuzzy matches the user has rejected
+   
+   **Data Access Pattern:**
+   - Each user has exactly one document
+   - All user data is stored in a single document for efficiency
+   - Real-time updates using Firestore's `updateDoc()` with dot notation
+   - No subcollections used - flat structure for simplicity
 
 ## 📖 Usage
 
