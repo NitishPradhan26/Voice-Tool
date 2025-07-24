@@ -5,6 +5,9 @@ import { FuzzyMatchMap } from '@/utils/textTransformations';
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'awaiting_confirmation' | 'transcribing' | 'correcting_grammar';
 
+// Maximum recording duration in seconds 
+const MAX_RECORDING_DURATION = 15 * 60; 
+
 // Pure function for audio blob validation (extracted for testing)
 export const validateAudioBlobPure = (blob: Blob): string | null => {
   const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5 MB in bytes
@@ -87,6 +90,7 @@ interface UseVoiceRecorderReturn {
   fuzzyMatches: FuzzyMatchMap;
   handleWordCorrection: (originalWord: string, correctedWord: string) => Promise<void>;
   revertFuzzyMatch: (correctedWord: string, originalWord: string) => void;
+  maxRecordingDuration: number;
 }
 
 export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
@@ -411,6 +415,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     }
   }, [audioBlob]);
 
+
   return {
     recordingState,
     startRecording,
@@ -426,6 +431,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     wordCount,
     fuzzyMatches,
     handleWordCorrection,
-    revertFuzzyMatch
+    revertFuzzyMatch,
+    maxRecordingDuration: MAX_RECORDING_DURATION
   };
 };

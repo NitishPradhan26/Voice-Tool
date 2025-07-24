@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import TranscriptDisplay from './TranscriptDisplay';
 import MicWaveform from './WaveformAnimation';
+import RecordingTimer from './RecordingTimer';
 
 export default function VoiceRecorder() {
   const { 
@@ -17,7 +18,8 @@ export default function VoiceRecorder() {
     wordCount,
     fuzzyMatches,
     handleWordCorrection,
-    revertFuzzyMatch
+    revertFuzzyMatch,
+    maxRecordingDuration
   } = useVoiceRecorder();
   
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
@@ -150,14 +152,14 @@ export default function VoiceRecorder() {
       {(recordingState === 'processing' || recordingState === 'transcribing' || recordingState === 'correcting_grammar') && (
         <button
           disabled
-          className={`
-            ${getMicButtonStyle()}
+          className="
+            bg-yellow-500 hover:bg-yellow-600 animate-pulse
             text-white font-semibold py-4 px-8 rounded-full
             cursor-not-allowed
-            focus:outline-none focus:ring-4 focus:ring-blue-300
+            focus:outline-none focus:ring-4 focus:ring-yellow-300
             min-w-[200px]
-          `}
-          aria-label={getMicButtonText()}
+          "
+          aria-label="Processing audio"
         >
           <div className="flex items-center justify-center space-x-2">
             {/* Microphone Icon */}
@@ -175,14 +177,18 @@ export default function VoiceRecorder() {
                 d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"
               />
             </svg>
-            <span>{getMicButtonText()}</span>
+            <span>Transcribing, Correcting, Personalizing ....</span>
           </div>
         </button>
       )}
 
-      {/* Recording State Indicator with Waveform */}
+      {/* Recording State Indicator with Waveform and Timer */}
       {recordingState === 'recording' && (
-        <div className="flex flex-col items-center space-y-4">
+        <div className="flex flex-col items-center space-y-6">
+          <RecordingTimer 
+            maxDuration={maxRecordingDuration}
+            onTimeUp={stopAndTranscribe}
+          />
           <MicWaveform isRecording={true} />
           <div className="flex items-center space-x-2 text-red-600">
             <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>

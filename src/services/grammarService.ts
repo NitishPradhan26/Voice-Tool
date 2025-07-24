@@ -45,7 +45,6 @@ export async function getGrammarCorrection(
                   2. Improve readability by restructuring the text:
                     - Break into multiple paragraphs where it makes sense.
                     - Use bullet points for lists or sequences.
-                    - Use **bold** for key terms or ideas and *italics* for emphasis (Markdown formatting is okay).
                   3. Preserve the speaker's tone and meaning.
                   4. Do not add or remove information—only clean up and organize what's there.
                   5. Return ONLY the cleaned-up and formatted transcript in JSON format as: {"corrected": "..."}`,
