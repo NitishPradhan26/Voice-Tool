@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
-import { useAuth } from '@/contexts/AuthContext';
-import { useUserData } from '@/contexts/UserDataContext';
 import TranscriptDisplay from './TranscriptDisplay';
 import MicWaveform from './WaveformAnimation';
 
@@ -11,9 +9,8 @@ export default function VoiceRecorder() {
   const { 
     recordingState, 
     startRecording, 
-    stopRecording, 
-    confirmTranscription,
-    cancelRecording,
+    stopAndTranscribe,
+    stopAndCancel,
     transcript, 
     error,
     audioDuration,
@@ -23,18 +20,7 @@ export default function VoiceRecorder() {
     revertFuzzyMatch
   } = useVoiceRecorder();
   
-  const { userData } = useUserData();
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
-  const { user } = useAuth();
-
-  const handleToggleRecording = async () => {
-    if (recordingState === 'idle') {
-      await startRecording();
-    } else if (recordingState === 'recording') {
-      stopRecording();
-    }
-  };
-
 
   const handleCopyTranscript = async () => {
     if (transcript) {
@@ -95,16 +81,79 @@ export default function VoiceRecorder() {
         <p className="text-gray-600">Click the microphone to start recording</p>
       </div>
 
-      {/* Main Recording Button */}
-      {recordingState !== 'awaiting_confirmation' && (
+      {/* Start Recording Button - Only show when idle */}
+      {recordingState === 'idle' && (
         <button
-          onClick={handleToggleRecording}
-          disabled={recordingState === 'processing' || recordingState === 'transcribing' || recordingState === 'correcting_grammar'}
+          onClick={startRecording}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-8 rounded-full
+            transition-all duration-200 transform hover:scale-105
+            focus:outline-none focus:ring-4 focus:ring-blue-300
+            min-w-[200px]"
+          aria-label="Start Recording"
+        >
+          <div className="flex items-center justify-center space-x-2">
+            {/* Microphone Icon */}
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"
+              />
+            </svg>
+            <span>Start Recording</span>
+          </div>
+        </button>
+      )}
+
+      {/* Transcribe and Cancel Buttons - Show during recording */}
+      {recordingState === 'recording' && (
+        <div className="flex flex-col items-center space-y-4">
+          <p className="text-lg font-medium text-gray-700 text-center">
+            Recording in progress! Choose an action:
+          </p>
+          <div className="flex space-x-4">
+            {/* Transcribe Button */}
+            <button
+              onClick={stopAndTranscribe}
+              className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300"
+              aria-label="Stop and transcribe recording"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Transcribe</span>
+            </button>
+
+            {/* Cancel Button */}
+            <button
+              onClick={stopAndCancel}
+              className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300"
+              aria-label="Stop and discard recording"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Cancel</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Processing States - Show status when processing, transcribing, or correcting grammar */}
+      {(recordingState === 'processing' || recordingState === 'transcribing' || recordingState === 'correcting_grammar') && (
+        <button
+          disabled
           className={`
             ${getMicButtonStyle()}
             text-white font-semibold py-4 px-8 rounded-full
-            transition-all duration-200 transform hover:scale-105
-            disabled:transform-none disabled:hover:scale-100
+            cursor-not-allowed
             focus:outline-none focus:ring-4 focus:ring-blue-300
             min-w-[200px]
           `}
@@ -131,40 +180,6 @@ export default function VoiceRecorder() {
         </button>
       )}
 
-      {/* Confirmation Buttons */}
-      {recordingState === 'awaiting_confirmation' && (
-        <div className="flex flex-col items-center space-y-4">
-          <p className="text-lg font-medium text-gray-700 text-center">
-            Recording complete! Would you like to transcribe this audio?
-          </p>
-          <div className="flex space-x-4">
-            {/* Confirm Button */}
-            <button
-              onClick={() => confirmTranscription()}
-              className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300"
-              aria-label="Confirm and transcribe recording"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Transcribe</span>
-            </button>
-
-            {/* Cancel Button */}
-            <button
-              onClick={cancelRecording}
-              className="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300"
-              aria-label="Cancel and discard recording"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>Discard</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Recording State Indicator with Waveform */}
       {recordingState === 'recording' && (
         <div className="flex flex-col items-center space-y-4">
@@ -173,29 +188,6 @@ export default function VoiceRecorder() {
             <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
             <span className="text-sm font-medium">Recording in progress...</span>
           </div>
-        </div>
-      )}
-
-      {/* Audio Duration Display */}
-      {recordingState === 'awaiting_confirmation' && audioDuration > 0 && (
-        <div className="text-sm text-gray-600">
-          Recording duration: {audioDuration} seconds
-        </div>
-      )}
-
-      {/* Transcribing State Indicator */}
-      {recordingState === 'transcribing' && (
-        <div className="flex items-center space-x-2 text-purple-600">
-          <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">Transcribing audio...</span>
-        </div>
-      )}
-
-      {/* Grammar Correction State Indicator */}
-      {recordingState === 'correcting_grammar' && (
-        <div className="flex items-center space-x-2 text-indigo-600">
-          <div className="w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">Correcting grammar and spelling...</span>
         </div>
       )}
 
@@ -268,8 +260,6 @@ export default function VoiceRecorder() {
               <TranscriptDisplay 
                 transcript={transcript} 
                 onWordCorrection={handleWordCorrection}
-                correctedWords={userData.correctedWords}
-                discardedFuzzy={userData.discardedFuzzy}
                 fuzzyMatches={fuzzyMatches}
                 onRevertFuzzyMatch={revertFuzzyMatch}
               />

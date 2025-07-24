@@ -8,8 +8,6 @@ import { applyWordTransformations, FuzzyMatchMap } from '@/utils/textTransformat
 interface TranscriptDisplayProps {
   transcript: string;
   onWordCorrection: (originalWord: string, correctedWord: string) => void;
-  correctedWords: Record<string, string>;
-  discardedFuzzy?: Record<string, string>;
   fuzzyMatches?: FuzzyMatchMap;
   onRevertFuzzyMatch?: (correctedWord: string, originalWord: string) => void;
 }
@@ -17,8 +15,6 @@ interface TranscriptDisplayProps {
 export default function TranscriptDisplay({ 
   transcript, 
   onWordCorrection, 
-  correctedWords,
-  discardedFuzzy = {},
   fuzzyMatches = {},
   onRevertFuzzyMatch
 }: TranscriptDisplayProps) {

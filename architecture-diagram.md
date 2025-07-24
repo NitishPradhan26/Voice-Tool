@@ -17,6 +17,16 @@
 │  │                     │    │                      │    │                     │ │
 │  └─────────────────────┘    └──────────────────────┘    └─────────────────────┘ │
 │                                       │                                         │
+│  ┌─────────────────────┐    ┌──────────────────────┐    ┌─────────────────────┐ │
+│  │                     │    │                      │    │                     │ │
+│  │  TranscriptDisplay  │    │   ClickableWord      │    │   Settings.tsx     │ │
+│  │     .tsx            │    │     .tsx             │    │                     │ │
+│  │                     │    │                      │    │  - User Preferences │ │
+│  │  - Word Rendering   │───▶│  - Word Correction   │    │  - Grammar Prompts  │ │
+│  │  - Click Handlers   │    │  - Suggestions UI    │    │  - Word Management  │ │
+│  │  - Fuzzy Matching   │    │  - User Input        │    │                     │ │
+│  │                     │    │                      │    │                     │ │
+│  └─────────────────────┘    └──────────────────────┘    └─────────────────────┘ │
 │                                       │                                         │
 │                   ┌───────────────────┴───────────────────┐                     │
 │                   │                                       │                     │
@@ -31,10 +41,24 @@
 │                   │                                       │                     │
 │                   └───────────────────────────────────────┘                     │
 │                                       │                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                          Context Providers                                  │ │
+│  │                                                                             │ │
+│  │  ┌─────────────────────┐              ┌─────────────────────┐               │ │
+│  │  │   AuthContext.tsx   │              │ UserDataContext.tsx │               │ │
+│  │  │                     │              │                     │               │ │
+│  │  │  - Firebase Auth    │              │  - User Data State  │               │ │
+│  │  │  - Google Sign-In   │              │  - Word Corrections │               │ │
+│  │  │  - User Session     │              │  - Grammar Prompts  │               │ │
+│  │  │                     │              │  - Fuzzy Matches    │               │ │
+│  │  └─────────────────────┘              └─────────────────────┘               │ │
+│  │                                                                             │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                       │                                         │
 └───────────────────────────────────────┼─────────────────────────────────────────┘
                                         │
-                                        │ HTTP POST /api/transcribe
-                                        │ (FormData with audio blob)
+                                        │ HTTP API Calls
+                                        │ (Multiple Endpoints)
                                         │
 ┌───────────────────────────────────────┼─────────────────────────────────────────┐
 │                                       │                                         │
@@ -44,18 +68,39 @@
 │  │                                                                             │ │
 │  │                    /api/transcribe/route.ts                                 │ │
 │  │                                                                             │ │
-│  │  - Serverless Function (Vercel Edge)                                       │ │
-│  │  - File Validation (type, size)                                            │ │
-│  │  - OpenAI Client Initialization                                            │ │
-│  │  - Audio Processing                                                        │ │
+│  │  - Serverless Function (Vercel)                                            │ │
+│  │  - File Validation (type, size < 4.5MB)                                    │ │
+│  │  - OpenAI Whisper Integration                                              │ │
+│  │  - Audio Processing (45s timeout)                                          │ │
 │  │  - Error Handling & Logging                                                │ │
+│  │                                                                             │ │
+│  └─────────────────────────────────────┬───────────────────────────────────────┘ │
+│                                        │                                         │
+│  ┌─────────────────────────────────────▼───────────────────────────────────────┐ │
+│  │                                                                             │ │
+│  │                 /api/grammar/correct/route.ts                               │ │
+│  │                                                                             │ │
+│  │  - Grammar correction using GPT-4                                          │ │
+│  │  - User transformation application                                          │ │
+│  │  - Fuzzy matching integration                                              │ │
+│  │  - 30s timeout for processing                                              │ │
+│  │                                                                             │ │
+│  └─────────────────────────────────────┬───────────────────────────────────────┘ │
+│                                        │                                         │
+│  ┌─────────────────────────────────────▼───────────────────────────────────────┐ │
+│  │                                                                             │ │
+│  │                      /api/user/* Routes                                     │ │
+│  │                                                                             │ │
+│  │  - /api/user/prompt (GET/PUT)                                              │ │
+│  │  - /api/user/transformations (GET/POST)                                    │ │
+│  │  - /api/user/discarded-fuzzy (GET/POST)                                    │ │
+│  │  - Firebase Firestore integration                                          │ │
 │  │                                                                             │ │
 │  └─────────────────────────────────────┬───────────────────────────────────────┘ │
 │                                        │                                         │
 └────────────────────────────────────────┼─────────────────────────────────────────┘
                                          │
-                                         │ OpenAI API Call
-                                         │ (Whisper-1 Model)
+                                         │ External API Calls
                                          │
 ┌────────────────────────────────────────┼─────────────────────────────────────────┐
 │                                        │                                         │
@@ -63,19 +108,62 @@
 │                                        │                                         │
 │  ┌─────────────────────────────────────▼───────────────────────────────────────┐ │
 │  │                                                                             │ │
-│  │                        OpenAI Whisper API                                  │ │
+│  │                        OpenAI API Services                                 │ │
 │  │                                                                             │ │
-│  │  - Model: whisper-1 (Large)                                                │ │
-│  │  - Audio Processing & Transcription                                        │ │
-│  │  - Response: Text transcript                                               │ │
-│  │  - Rate Limiting & Error Handling                                          │ │
+│  │  ┌─────────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                    Whisper API                                         │ │ │
+│  │  │  - Model: whisper-1 (Large)                                            │ │ │
+│  │  │  - Audio Processing & Transcription                                    │ │ │
+│  │  │  - Response: Text transcript                                           │ │ │
+│  │  │  - Rate Limiting & Error Handling                                      │ │ │
+│  │  └─────────────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                             │ │
+│  │  ┌─────────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                    GPT-4 API                                            │ │ │
+│  │  │  - Model: gpt-4-1106-preview                                            │ │ │
+│  │  │  - Grammar correction & text processing                                 │ │ │
+│  │  │  - JSON response format                                                 │ │ │
+│  │  │  - Custom prompts support                                               │ │ │
+│  │  └─────────────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                             │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                             │ │
+│  │                        Firebase Services                                   │ │
+│  │                                                                             │ │
+│  │  ┌─────────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                    Firebase Auth                                        │ │ │
+│  │  │  - Google OAuth 2.0 integration                                        │ │ │
+│  │  │  - User session management                                              │ │ │
+│  │  │  - Token validation                                                     │ │ │
+│  │  └─────────────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                             │ │
+│  │  ┌─────────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                    Firebase Firestore                                  │ │ │
+│  │  │                                                                         │ │ │
+│  │  │  Collection: "Customers"                                                │ │ │
+│  │  │  Document ID: {user_uid}                                                │ │ │
+│  │  │                                                                         │ │ │
+│  │  │  Document Structure:                                                    │ │ │
+│  │  │  {                                                                      │ │ │
+│  │  │    "prompt": "Custom grammar prompt",                                   │ │ │
+│  │  │    "corrected_words": {                                                 │ │ │
+│  │  │      "original": "correction"                                           │ │ │
+│  │  │    },                                                                   │ │ │
+│  │  │    "discarded_fuzzy": {                                                 │ │ │
+│  │  │      "word": "ignored_suggestion"                                       │ │ │
+│  │  │    }                                                                    │ │ │
+│  │  │  }                                                                      │ │ │
+│  │  │                                                                         │ │ │
+│  │  └─────────────────────────────────────────────────────────────────────────┘ │ │
 │  │                                                                             │ │
 │  └─────────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Data Flow: Record → Transcribe → UI
+## Complete Data Flow: Record → Transcribe → Correct → Store
 
 ### Phase 1: Recording Initiation
 ```
@@ -266,10 +354,97 @@ API Response Received
           │
           ▼
 ┌─────────────────────────┐
-│   User Interaction      │
-│   - Read transcript     │
-│   - Copy to clipboard   │
-│   - Start new recording │
+│   TranscriptDisplay     │
+│   - Render words        │
+│   - Apply fuzzy matches │
+│   - Add click handlers  │
+└─────────────────────────┘
+```
+
+### Phase 6: Word Correction Flow
+```
+User Clicks on Word
+          │
+          ▼
+┌─────────────────────────┐
+│   ClickableWord.tsx     │
+│   - Show suggestions    │
+│   - Load user data      │
+│   - Display input field │
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│   User Data Context    │
+│   - Fetch corrections  │
+│   - Check fuzzy matches │
+│   - Load user prompt    │
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│   Correction Applied    │
+│   - Update transcript   │
+│   - Save to Firebase    │
+│   - Store in context    │
+└─────────────────────────┘
+```
+
+### Phase 7: Grammar Correction Flow
+```
+User Clicks "Correct Grammar"
+          │
+          ▼
+┌─────────────────────────┐
+│   POST /api/grammar/    │
+│   correct               │
+│   - Send transcript     │
+│   - Include user data   │
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│   Grammar Service       │
+│   - Apply user prompts  │
+│   - Process with GPT-4  │
+│   - Apply transformations│
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│   Corrected Text        │
+│   - Update UI           │
+│   - Show fuzzy matches  │
+│   - Enable word editing │
+└─────────────────────────┘
+```
+
+### Phase 8: User Data Persistence
+```
+User Makes Correction
+          │
+          ▼
+┌─────────────────────────┐
+│   User Data API         │
+│   - POST transformations│
+│   - POST discarded-fuzzy│
+│   - PUT custom prompt   │
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│   Firebase Firestore    │
+│   - Update user document│
+│   - Store in "Customers"│
+│   - Use dot notation    │
+└─────────┬───────────────┘
+          │
+          ▼
+┌─────────────────────────┐
+│   Context State Update  │
+│   - Refresh user data   │
+│   - Update local state  │
+│   - Enable auto-apply   │
 └─────────────────────────┘
 ```
 
@@ -286,24 +461,79 @@ API Response Received
 │                 │    │  - Display      │    │  - MediaRecorder│
 └─────────────────┘    │    Logic        │    │    Integration  │
                        │                 │    │                 │
-                       └─────────────────┘    └─────────────────┘
-                                │                       │
-                                │                       │
-                                ▼                       ▼
+                       └─────────┬───────┘    └─────────────────┘
+                                 │                       │
+                                 │                       │
+                                 ▼                       ▼
                        ┌─────────────────┐    ┌─────────────────┐
-                       │   Browser APIs  │    │   Next.js API   │
-                       │                 │    │     Routes      │
-                       │  - MediaRecorder│    │                 │
-                       │  - Clipboard    │    │  - Serverless   │
-                       │  - Audio Stream │    │    Functions    │
-                       │                 │    │  - OpenAI SDK   │
-                       └─────────────────┘    └─────────────────┘
+                       │TranscriptDisplay│    │   Next.js API   │
+                       │     .tsx        │    │     Routes      │
+                       │                 │    │                 │
+                       │  - Word Parsing │    │  - Serverless   │
+                       │  - Click Events │    │    Functions    │
+                       │  - Fuzzy Match  │    │  - OpenAI SDK   │
+                       │    Display      │    │  - Firebase SDK │
+                       └─────────┬───────┘    └─────────────────┘
+                                 │                       │
+                                 │                       │
+                                 ▼                       ▼
+                       ┌─────────────────┐    ┌─────────────────┐
+                       │ ClickableWord   │    │   Browser APIs  │
+                       │     .tsx        │    │                 │
+                       │                 │    │  - MediaRecorder│
+                       │  - Suggestions  │    │  - Clipboard    │
+                       │  - Input Field  │    │  - Audio Stream │
+                       │  - Save Actions │    │                 │
+                       └─────────┬───────┘    └─────────────────┘
+                                 │
+                                 │
+                                 ▼
+                       ┌─────────────────┐
+                       │   Settings.tsx  │
+                       │                 │
+                       │  - User Prefs   │
+                       │  - Word Mgmt    │
+                       │  - Grammar      │
+                       │    Prompts      │
+                       └─────────────────┘
+```
+
+### Context Provider Flow
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                               Context Layer                                     │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────────────┐              ┌─────────────────────┐                   │
+│  │   AuthContext       │              │ UserDataContext     │                   │
+│  │                     │              │                     │                   │
+│  │  - User State       │◄─────────────┤  - Word Corrections │                   │
+│  │  - Sign In/Out      │              │  - Grammar Prompts  │                   │
+│  │  - Session Mgmt     │              │  - Fuzzy Matches    │                   │
+│  │                     │              │  - Firebase Sync    │                   │
+│  └─────────────────────┘              └─────────────────────┘                   │
+│             │                                     │                             │
+│             │                                     │                             │
+│             ▼                                     ▼                             │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                          All Components                                     │ │
+│  │                                                                             │ │
+│  │  VoiceRecorder → TranscriptDisplay → ClickableWord → Settings              │ │
+│  │       │                │                  │              │                 │ │
+│  │       │                │                  │              │                 │ │
+│  │       └────────────────┼──────────────────┼──────────────┘                 │ │
+│  │                        │                  │                                │ │
+│  │                        └──────────────────┘                                │ │
+│  │                                                                             │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## State Management Flow
 
+### Recording States
 ```
-Recording States:
 ┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────────┐    ┌─────────┐
 │  idle   │───▶│  recording  │───▶│ processing  │───▶│transcribing  │───▶│  idle   │
 └─────────┘    └─────────────┘    └─────────────┘    └──────────────┘    └─────────┘
@@ -312,28 +542,103 @@ Recording States:
      └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Grammar Correction States
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐
+│ transcript  │───▶│   correcting    │───▶│   corrected     │───▶│ user_edit   │
+│  received   │    │   grammar       │    │   grammar       │    │  mode       │
+└─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────┘
+     ▲                                                                  │
+     │                                                                  │
+     └──────────────────────────────────────────────────────────────────┘
+```
+
+### User Data States
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐
+│   loading   │───▶│     loaded      │───▶│    updating     │───▶│   synced    │
+│ user_data   │    │   user_data     │    │   user_data     │    │ user_data   │
+└─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────┘
+     ▲                                                                  │
+     │                                                                  │
+     └──────────────────────────────────────────────────────────────────┘
+```
+
+### Authentication States
+```
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐
+│ unauthenticated │───▶│   signing_in    │───▶│  authenticated  │───▶│ signing_out │
+└─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────┘
+     ▲                                                                  │
+     │                                                                  │
+     └──────────────────────────────────────────────────────────────────┘
+```
+
 ## Error Handling Flow
 
 ```
 Error Sources:
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Microphone     │    │   API Route     │    │   OpenAI API    │
-│  Permission     │    │   Validation    │    │   Errors        │
-│  - Denied       │    │   - File type   │    │   - Rate limit  │
-│  - Not found    │    │   - File size   │    │   - Quota       │
-│  - Hardware     │    │   - API key     │    │   - Network     │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          ▼                      ▼                      ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Error State Management                       │
-│                                                                 │
-│  - Set error message in state                                   │
-│  - Reset recordingState to 'idle'                              │
-│  - Display error to user                                       │
-│  - Log error for debugging                                     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Microphone     │    │   API Route     │    │   OpenAI API    │    │   Firebase      │
+│  Permission     │    │   Validation    │    │   Errors        │    │   Errors        │
+│  - Denied       │    │   - File type   │    │   - Rate limit  │    │   - Auth failed │
+│  - Not found    │    │   - File size   │    │   - Quota       │    │   - Network     │
+│  - Hardware     │    │   - API key     │    │   - Timeout     │    │   - Permissions │
+└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
+          │                      │                      │                      │
+          ▼                      ▼                      ▼                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                            Error State Management                                   │
+│                                                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐ │
+│  │                          Error Handling Strategy                                │ │
+│  │                                                                                 │ │
+│  │  1. Transcription Errors:                                                      │ │
+│  │     - Set error message in state                                               │ │
+│  │     - Reset recordingState to 'idle'                                          │ │
+│  │     - Display error to user                                                   │ │
+│  │     - Log error for debugging                                                 │ │
+│  │                                                                                 │ │
+│  │  2. Grammar Correction Errors:                                                 │ │
+│  │     - Fallback to original transcript                                          │ │
+│  │     - Show warning message                                                     │ │
+│  │     - Continue with word correction features                                   │ │
+│  │                                                                                 │ │
+│  │  3. User Data Errors:                                                          │ │
+│  │     - Retry with exponential backoff                                           │ │
+│  │     - Cache failed updates locally                                             │ │
+│  │     - Show offline mode indicator                                              │ │
+│  │                                                                                 │ │
+│  │  4. Authentication Errors:                                                     │ │
+│  │     - Redirect to sign-in page                                                 │ │
+│  │     - Clear local storage                                                      │ │
+│  │     - Show authentication error message                                        │ │
+│  │                                                                                 │ │
+│  └─────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-This architecture provides a clear separation of concerns with robust error handling and state management throughout the entire voice-to-text pipeline.
+## Database Schema
+```
+Firebase Firestore Collection: "Customers"
+Document Structure:
+{
+  "prompt": "string",                    // Custom grammar correction prompt
+  "corrected_words": {                   // User word corrections dictionary
+    "original_word": "corrected_word",
+    "another_word": "its_correction"
+  },
+  "discarded_fuzzy": {                   // Rejected fuzzy match suggestions
+    "word": "rejected_suggestion",
+    "word2": "rejected_suggestion2"
+  }
+}
+
+Security Rules:
+- Users can only access their own document (document ID = user UID)
+- Read/write permissions require authentication
+- No cross-user data access allowed
+```
+
+This comprehensive architecture provides a robust foundation for voice transcription with intelligent text processing, user customization, and scalable data management. The system handles multiple error scenarios gracefully while maintaining a smooth user experience through proper state management and context-based data flow.

@@ -75,6 +75,8 @@ interface UseVoiceRecorderReturn {
   recordingState: RecordingState;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
+  stopAndTranscribe: () => void;
+  stopAndCancel: () => void;
   confirmTranscription: () => Promise<void>;
   cancelRecording: () => void;
   audioBlob: Blob | null;
@@ -101,6 +103,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number | null>(null);
+  const autoActionRef = useRef<'transcribe' | 'cancel' | null>(null);
 
   const startRecording = useCallback(async () => {
     try {
@@ -110,6 +113,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
       setAudioDuration(0);
       setWordCount(0);
       setFuzzyMatches({});
+      autoActionRef.current = null; // Reset auto-action flag
       
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -160,8 +164,6 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
           return;
         }
 
-        // Set state to await user confirmation
-        setRecordingState('awaiting_confirmation');
       };
 
       // Start recording
@@ -323,7 +325,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   }, [userData.prompt, userData.correctedWords, userData.discardedFuzzy, validateTranscription]);
 
   const confirmTranscription = useCallback(async () => {
-    if (audioBlob && recordingState === 'awaiting_confirmation') {
+    if (audioBlob && recordingState === 'processing') {
       await transcribeAudioBlob(audioBlob);
     }
   }, [audioBlob, recordingState, transcribeAudioBlob]);
@@ -370,7 +372,7 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
   }, []);
 
   const cancelRecording = useCallback(() => {
-    if (recordingState === 'awaiting_confirmation') {
+    if (recordingState === 'processing') {
       setAudioBlob(null);
       setTranscript(null);
       setError(null);
@@ -381,10 +383,40 @@ export const useVoiceRecorder = (): UseVoiceRecorderReturn => {
     }
   }, [recordingState]);
 
+  const stopAndTranscribe = useCallback(() => {
+    if (recordingState === 'recording') {
+      autoActionRef.current = 'transcribe';
+      stopRecording();
+    }
+  }, [recordingState, stopRecording]);
+
+  const stopAndCancel = useCallback(() => {
+    if (recordingState === 'recording') {
+      autoActionRef.current = 'cancel';
+      stopRecording();
+    }
+  }, [recordingState, stopRecording]);
+
+  // Handle auto-actions when audioBlob becomes available
+  useEffect(() => {
+    if (audioBlob && recordingState === 'processing' && autoActionRef.current) {
+      const autoAction = autoActionRef.current;
+      autoActionRef.current = null; // Reset the flag
+      
+      if (autoAction === 'transcribe') {
+        confirmTranscription();
+      } else if (autoAction === 'cancel') {
+        cancelRecording();
+      }
+    }
+  }, [audioBlob]);
+
   return {
     recordingState,
     startRecording,
     stopRecording,
+    stopAndTranscribe,
+    stopAndCancel,
     confirmTranscription,
     cancelRecording,
     audioBlob,
