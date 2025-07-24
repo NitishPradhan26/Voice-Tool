@@ -31,12 +31,24 @@ export async function getGrammarCorrection(
 
   try {
     const correctionPromise = openai.chat.completions.create({
-      model: 'gpt-4-1106-preview',
+      model: 'gpt-4o',
       response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: prompt + ' Return ONLY the corrected text in JSON format: {"corrected": "..."}',
+          content: prompt + 
+
+                  `\n\nThe above prompt is optional user guidance to help set the tone, style, or context.
+                  \n\nNow, follow these core instructions regardless of the prompt:
+                  You are a helpful writing assistant. Your task is to:
+                  1 . Correct grammar and spelling mistakes in the given text.
+                  2. Improve readability by restructuring the text:
+                    - Break into multiple paragraphs where it makes sense.
+                    - Use bullet points for lists or sequences.
+                    - Use **bold** for key terms or ideas and *italics* for emphasis (Markdown formatting is okay).
+                  3. Preserve the speaker's tone and meaning.
+                  4. Do not add or remove information—only clean up and organize what's there.
+                  5. Return ONLY the cleaned-up and formatted transcript in JSON format as: {"corrected": "..."}`,
         },
         {
           role: 'user',
@@ -51,11 +63,13 @@ export async function getGrammarCorrection(
     const content = response.choices[0].message.content;
     if (!content) throw new Error('No response content from OpenAI');
     const json = JSON.parse(content);
+    console.log('content after grammar correction', json.corrected);
     return {
       correctedText: json.corrected || text,
       duration: Date.now() - startTime,
     };
   } catch (error) {
+    console.error('Grammar correction error:', error);
     return { correctedText: text, duration: Date.now() - startTime };
   }
 }
