@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import TranscriptDisplay from './TranscriptDisplay';
 import MicWaveform from './WaveformAnimation';
@@ -23,6 +23,13 @@ export default function VoiceRecorder() {
   } = useVoiceRecorder();
   
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+
+  // Auto-copy transcript when it becomes available
+  useEffect(() => {
+    if (transcript && recordingState === 'idle') {
+      handleCopyTranscript();
+    }
+  }, [transcript, recordingState]);
 
   const handleCopyTranscript = async () => {
     if (transcript) {
